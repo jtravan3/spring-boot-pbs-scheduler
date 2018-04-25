@@ -1,11 +1,11 @@
 package com.jtravan.pbs.scheduler;
 
-import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -14,8 +14,8 @@ import java.util.Map;
 @Component
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
-    private final Map<Resource, Integer> resourcesWeHaveLockOn;
-    private Resource resourceWaitingOn;
+    private final Map<Employee, Integer> resourcesWeHaveLockOn;
+    private Employee resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
     private final ResourceNotificationManager resourceNotificationManager;

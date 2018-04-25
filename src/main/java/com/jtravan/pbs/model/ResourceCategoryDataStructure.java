@@ -1,5 +1,6 @@
 package com.jtravan.pbs.model;
 
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -11,17 +12,17 @@ import java.util.*;
 @SuppressWarnings("ALL")
 public class ResourceCategoryDataStructure {
 
-    private final Map<Resource, Heap<ResourceOperation>> resourceMinHeapMap;
+    private final Map<Employee, Heap<ResourceOperation>> resourceMinHeapMap;
 
     public ResourceCategoryDataStructure() {
-        resourceMinHeapMap = new HashMap<Resource, Heap<ResourceOperation>>();
+        resourceMinHeapMap = new HashMap<Employee, Heap<ResourceOperation>>();
     }
 
     public void reset() {
         resourceMinHeapMap.clear();
     }
 
-    public ResourceOperation getHighestPriorityForResource(Resource resource) {
+    public ResourceOperation getHighestPriorityForResource(Employee resource) {
 
         if(resource == null) {
             return null;
@@ -37,7 +38,7 @@ public class ResourceCategoryDataStructure {
         }
     }
 
-    public void insertResourceOperationForResource(Resource resource, ResourceOperation resourceOperation) {
+    public void insertResourceOperationForResource(Employee resource, ResourceOperation resourceOperation) {
 
         if(resource == null || resourceOperation == null) {
             throw new IllegalArgumentException("Resource or Resource Operation is null");
@@ -58,7 +59,7 @@ public class ResourceCategoryDataStructure {
         }
     }
 
-    public void removeResourceOperationForResouce(Resource resource, ResourceOperation resourceOperation) {
+    public void removeResourceOperationForResouce(Employee resource, ResourceOperation resourceOperation) {
 
         if(resource == null || resourceOperation == null) {
             throw new IllegalArgumentException("Resource or Resource Operation is null");
@@ -90,15 +91,15 @@ public class ResourceCategoryDataStructure {
 
     }
 
-    public Set<Resource> getResourceSet() {
+    public Set<Employee> getResourceSet() {
         return resourceMinHeapMap.keySet();
     }
 
-    public Heap getHeapForResource(Resource resource) {
+    public Heap getHeapForResource(Employee resource) {
         return resourceMinHeapMap.get(resource);
     }
 
-    public void clearHeapForResource(Resource resource) {
+    public void clearHeapForResource(Employee resource) {
         resourceMinHeapMap.get(resource).clear();
         resourceMinHeapMap.put(resource, null);
     }

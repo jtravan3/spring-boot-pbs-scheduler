@@ -1,5 +1,7 @@
 package com.jtravan.pbs.model;
 
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,7 +42,7 @@ public class Transaction {
         return resourceOperationList;
     }
 
-    public List<ResourceOperation> getAndRemoveOperationsByResource(Resource resource) {
+    public List<ResourceOperation> getAndRemoveOperationsByResource(Employee resource) {
 
         if(resource == null || resourceOperationList.isEmpty()) {
             return Collections.emptyList();

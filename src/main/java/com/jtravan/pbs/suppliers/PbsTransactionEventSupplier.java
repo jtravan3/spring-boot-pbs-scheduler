@@ -12,18 +12,19 @@ import java.util.Date;
 import java.util.function.Supplier;
 
 @Component
-public class TransactionEventSupplier implements Supplier<TransactionEvent> {
+public class PbsTransactionEventSupplier implements Supplier<TransactionEvent> {
 
     private final EmployeeRepository employeeRepository;
+    private final PredictionBasedScheduler predictionBasedScheduler;
 
-    public TransactionEventSupplier(EmployeeRepository employeeRepository) {
+    public PbsTransactionEventSupplier(EmployeeRepository employeeRepository, PredictionBasedScheduler predictionBasedScheduler) {
         this.employeeRepository = employeeRepository;
+        this.predictionBasedScheduler = predictionBasedScheduler;
     }
 
     @Override
     public TransactionEvent get() {
 
-//        PredictionBasedScheduler pbs = new PredictionBasedScheduler()
         Employee e = employeeRepository.findById("1000").block();
         return new TransactionEvent(e.toString(), new Date());
     }

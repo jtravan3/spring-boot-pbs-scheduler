@@ -2,7 +2,6 @@ package com.jtravan.pbs.scheduler;
 
 import com.jtravan.pbs.model.Action;
 import com.jtravan.pbs.model.Operation;
-import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceCategoryDataStructure;
 import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
@@ -13,6 +12,7 @@ import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.services.TransactionNotificationManager;
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -27,9 +27,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     private final ResourceCategoryDataStructure resourceCategoryDataStructure_WRITE;
     private final ResourceNotificationManager resourceNotificationManager;
     private final TransactionNotificationManager transactionNotificationManager;
-    private final Map<Resource, Integer> resourcesWeHaveLockOn_Read;
-    private final Map<Resource, Integer> resourcesWeHaveLockOn_Write;
-    private Resource resourceWaitingOn;
+    private final Map<Employee, Integer> resourcesWeHaveLockOn_Read;
+    private final Map<Employee, Integer> resourcesWeHaveLockOn_Write;
+    private Employee resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
     private Thread thread;

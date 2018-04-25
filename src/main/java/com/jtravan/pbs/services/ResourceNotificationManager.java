@@ -1,36 +1,28 @@
 package com.jtravan.pbs.services;
 
 import com.jtravan.pbs.model.Operation;
-import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceNotification;
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class ResourceNotificationManager implements ResourceNotificationHandler{
 
     private final List<ResourceNotificationHandler> handlers;
-    private final Map<Integer, Resource> resourceIntegerMap;
 
 
     private ResourceNotificationManager() {
-        resourceIntegerMap = new HashMap<>();
         handlers = new LinkedList<>();
-
-        for (Resource resource : Resource.values()) {
-            resourceIntegerMap.put(resource.getResourceNum(), resource);
-        }
     }
 
     @SuppressWarnings("Duplicates")
-    public synchronized void lock(Resource resource, Operation operation) {
+    public synchronized void lock(Employee resource, Operation operation) {
 
         if (operation == Operation.READ) {
-            resource.lock();
+            resource.setLocked(true);
 
             ResourceNotification resourceNotification = new ResourceNotification();
             resourceNotification.setResource(resource);
@@ -39,7 +31,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             handleResourceNotification(resourceNotification);
         } else {
             if (!resource.isLocked()) {
-                resource.lock();
+                resource.setLocked(true);
 
                 ResourceNotification resourceNotification = new ResourceNotification();
                 resourceNotification.setResource(resource);
@@ -47,14 +39,14 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
                 System.out.println("Locking Resource " + resource);
                 handleResourceNotification(resourceNotification);
             } else {
-                throw new IllegalStateException("Cannot lock already locked resource that has a Write lock. Resource " + resource.name());
+                throw new IllegalStateException("Cannot lock already locked resource that has a Write lock. Resource " + resource.toString());
             }
         }
     }
 
-    public void unlock(Resource resource) {
+    public void unlock(Employee resource) {
         if (resource.isLocked()) {
-            resource.unlock();
+            resource.setLocked(false);
 
             ResourceNotification resourceNotification = new ResourceNotification();
             resourceNotification.setResource(resource);
@@ -62,10 +54,6 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             System.out.println("Unlocking Resource " + resource);
             handleResourceNotification(resourceNotification);
         }
-    }
-
-    public Resource getResourceByResourceNum(int resourceNum) {
-        return resourceIntegerMap.get(resourceNum);
     }
 
     public synchronized void registerHandler (ResourceNotificationHandler handler) {

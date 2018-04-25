@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.Random;
 
 @Component
-public class BatchFactory {
+public class AbortPercentageFactory {
 
     public Transaction setAbortPercentage(Transaction transaction, int percentage) {
 

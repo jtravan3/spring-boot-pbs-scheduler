@@ -1,9 +1,11 @@
 package com.jtravan.pbs.model;
 
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
+
 public class ResourceOperation {
 
     private Operation operation;
-    private Resource resource;
+    private Employee resource;
     private long executionTime_InMilliSeconds;
     private Transaction associatedTransaction;
     private boolean isCommitOperation;
@@ -25,11 +27,11 @@ public class ResourceOperation {
         this.operation = operation;
     }
 
-    public Resource getResource() {
+    public Employee getResource() {
         return resource;
     }
 
-    public void setResource(Resource resource) {
+    public void setResource(Employee resource) {
         this.resource = resource;
     }
 
@@ -67,6 +69,6 @@ public class ResourceOperation {
             return "";
         }
 
-        return resource.name() + "_" + operation.name() + " - " + executionTime_InMilliSeconds + "secs";
+        return resource.toString() + "_" + operation.name() + " - " + executionTime_InMilliSeconds + "secs";
     }
 }

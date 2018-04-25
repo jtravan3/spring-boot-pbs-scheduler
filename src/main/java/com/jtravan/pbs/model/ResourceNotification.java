@@ -1,15 +1,17 @@
 package com.jtravan.pbs.model;
 
+import com.techprimers.reactive.reactivemongoexample1.model.Employee;
+
 public class ResourceNotification {
 
-    private Resource resource;
+    private Employee resource;
     private boolean isLocked;
 
-    public Resource getResource() {
+    public Employee getResource() {
         return resource;
     }
 
-    public void setResource(Resource resource) {
+    public void setResource(Employee resource) {
         this.resource = resource;
     }
 
