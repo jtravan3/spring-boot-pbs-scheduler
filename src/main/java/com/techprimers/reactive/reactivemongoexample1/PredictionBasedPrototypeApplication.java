@@ -8,10 +8,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 
-import java.util.UUID;
 import java.util.stream.Stream;
 
-@ComponentScan(value = "com.jtravan.pbs")
+@ComponentScan(value = {"com.jtravan.pbs","com.techprimers.reactive.reactivemongoexample1"})
 @SpringBootApplication
 public class PredictionBasedPrototypeApplication {
 

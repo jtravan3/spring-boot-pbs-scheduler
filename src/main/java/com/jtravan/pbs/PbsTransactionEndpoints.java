@@ -29,6 +29,7 @@ public class PbsTransactionEndpoints {
     public PbsTransactionEndpoints(TransactionEventSupplier transactionEventSupplier,
                                    PredictionBasedScheduler predictionBasedScheduler,
                                    TransactionGenerator transactionGenerator) {
+
         this.transactionEventSupplier = transactionEventSupplier;
         this.predictionBasedScheduler = predictionBasedScheduler;
         this.transactionGenerator = transactionGenerator;
