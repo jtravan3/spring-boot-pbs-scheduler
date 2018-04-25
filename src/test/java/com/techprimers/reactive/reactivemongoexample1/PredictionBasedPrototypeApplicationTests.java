@@ -7,7 +7,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class ReactiveMongoExample1ApplicationTests {
+public class PredictionBasedPrototypeApplicationTests {
 
 	@Test
 	public void contextLoads() {
