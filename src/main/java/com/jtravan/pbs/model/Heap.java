@@ -5,9 +5,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * Created by johnravan on 6/22/16.
- */
 public class Heap<T> {
     private int size;
     final private List<HeapNode> heap;

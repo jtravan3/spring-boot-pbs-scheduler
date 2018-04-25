@@ -1,8 +1,5 @@
 package com.jtravan.pbs.model;
 
-/**
- * Created by johnravan on 11/17/16.
- */
 public class ResourceNotification {
 
     private Resource resource;

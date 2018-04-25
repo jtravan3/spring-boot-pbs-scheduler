@@ -1,8 +1,5 @@
 package com.jtravan.pbs.model;
 
-/**
- * Created by johnravan on 3/31/16.
- */
 public enum Category {
     HCHE(0),
     HCLE(1),

@@ -2,36 +2,27 @@ package com.jtravan.pbs.generator;
 
 import com.jtravan.pbs.model.Category;
 import com.jtravan.pbs.model.Operation;
-import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.services.ResourceNotificationManager;
+import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Created by johnravan on 3/31/16.
- */
 @SuppressWarnings("ALL")
+@Component
 public class TransactionGenerator {
 
     private static final int RANDOM_BOUND = 500;
-
-    private static TransactionGenerator theInstance;
     private int methodCallCount = 0;
 
-    private TransactionGenerator() {}
+    private final ResourceNotificationManager resourceNotificationManager;
 
-    public static final TransactionGenerator getInstance() {
-
-        if(theInstance == null) {
-            theInstance = new TransactionGenerator();
-        }
-        return theInstance;
-
+    public TransactionGenerator(ResourceNotificationManager resourceNotificationManager) {
+        this.resourceNotificationManager = resourceNotificationManager;
     }
 
     public List<Transaction> generateRandomTransactions(int numOfOperations, int numOfTransactions, boolean controlCategory) {
@@ -57,7 +48,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(500));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(ResourceNotificationManager.getInstance(false).getResourceByResourceNum(resource));
+                resourceOperation.setResource(resourceNotificationManager.getResourceByResourceNum(resource));
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);
@@ -107,7 +98,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(500));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(ResourceNotificationManager.getInstance(false).getResourceByResourceNum(resource));
+                resourceOperation.setResource(resourceNotificationManager.getResourceByResourceNum(resource));
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);
@@ -145,7 +136,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(RANDOM_BOUND));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(ResourceNotificationManager.getInstance(false).getResourceByResourceNum(resource));
+                resourceOperation.setResource(resourceNotificationManager.getResourceByResourceNum(resource));
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);

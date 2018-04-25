@@ -1,8 +1,5 @@
 package com.jtravan.pbs.model;
 
-/**
- * Created by johnravan on 3/30/16.
- */
 public enum Operation {
     READ(0),
     WRITE(1);

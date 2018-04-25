@@ -3,40 +3,20 @@ package com.jtravan.pbs.services;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
+import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * Created by johnravan on 1/11/17.
- */
+@Component
 public class TransactionNotificationManager implements TransactionNotificationHandler {
 
-    private ResourceNotificationManager resourceNotificationManager;
+    private final ResourceNotificationManager resourceNotificationManager;
+    private final List<TransactionNotificationHandler> handlers;
 
-    private List<TransactionNotificationHandler> handlers;
-    private static TransactionNotificationManager theInstance;
-
-    private TransactionNotificationManager(boolean createOneTimeInstance) {
-        handlers = new LinkedList<TransactionNotificationHandler>();
-        resourceNotificationManager = ResourceNotificationManager.getInstance(createOneTimeInstance);
-    }
-
-    public synchronized static final TransactionNotificationManager getInstance(boolean createOneTimeInstance) {
-
-        if(createOneTimeInstance) {
-            return new TransactionNotificationManager(createOneTimeInstance);
-        } else {
-            if(theInstance == null) {
-                theInstance = new TransactionNotificationManager(createOneTimeInstance);
-            }
-            return theInstance;
-        }
-
-    }
-
-    public ResourceNotificationManager getResourceNotificationManager() {
-        return resourceNotificationManager;
+    public TransactionNotificationManager(ResourceNotificationManager resourceNotificationManager) {
+        handlers = new LinkedList<>();
+        this.resourceNotificationManager = resourceNotificationManager;
     }
 
     public void abortTransaction(Transaction transaction) {

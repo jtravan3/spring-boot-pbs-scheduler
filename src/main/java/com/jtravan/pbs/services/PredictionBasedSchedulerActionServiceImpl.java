@@ -6,27 +6,16 @@ import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceCategoryDataStructure;
 import com.jtravan.pbs.model.ResourceOperation;
+import org.springframework.stereotype.Component;
 
-/**
- * Created by johnravan on 11/9/16.
- */
 @SuppressWarnings("Duplicates")
+@Component
 public class PredictionBasedSchedulerActionServiceImpl implements PredictionBasedSchedulerActionService {
 
-    private static PredictionBasedSchedulerActionServiceImpl theInstance;
-    private TransactionNotificationManager transactionNotificationManager;
+    private final TransactionNotificationManager transactionNotificationManager;
 
-    private PredictionBasedSchedulerActionServiceImpl(TransactionNotificationManager transactionNotificationManager) {
+    public PredictionBasedSchedulerActionServiceImpl(TransactionNotificationManager transactionNotificationManager) {
         this.transactionNotificationManager = transactionNotificationManager;
-    }
-
-    public static final PredictionBasedSchedulerActionServiceImpl getInstance(TransactionNotificationManager scheduleNotificationManager) {
-
-        if(theInstance == null) {
-            theInstance = new PredictionBasedSchedulerActionServiceImpl(scheduleNotificationManager);
-        }
-        return theInstance;
-
     }
 
     public synchronized Action determineSchedulerAction(ResourceCategoryDataStructure rcdsRead, ResourceCategoryDataStructure rcdsWrite, ResourceOperation resourceOperation) {

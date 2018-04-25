@@ -1,54 +1,24 @@
 package com.jtravan.pbs.model;
 
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
 import java.util.*;
 
-/**
- * Created by johnravan on 6/22/16.
- */
+@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 @SuppressWarnings("ALL")
 public class ResourceCategoryDataStructure {
 
+    private final Map<Resource, Heap<ResourceOperation>> resourceMinHeapMap;
 
-    private static ResourceCategoryDataStructure theReadInstance;
-    private static ResourceCategoryDataStructure theWriteInstance;
-    private Map<Resource, Heap<ResourceOperation>> resourceMinHeapMap;
-
-    private ResourceCategoryDataStructure() {
-
+    public ResourceCategoryDataStructure() {
         resourceMinHeapMap = new HashMap<Resource, Heap<ResourceOperation>>();
-
-    }
-
-    public static final ResourceCategoryDataStructure getReadInstance(boolean createOneTimeInstance) {
-
-        if(createOneTimeInstance) {
-            return new ResourceCategoryDataStructure();
-        } else {
-            if(theReadInstance == null) {
-                theReadInstance = new ResourceCategoryDataStructure();
-            }
-            return theReadInstance;
-        }
-
-    }
-
-    public static final ResourceCategoryDataStructure getWriteInstance(boolean createOneTimeInstance) {
-
-        if(createOneTimeInstance) {
-            return new ResourceCategoryDataStructure();
-        } else {
-            if(theWriteInstance == null) {
-                theWriteInstance = new ResourceCategoryDataStructure();
-            }
-            return theWriteInstance;
-        }
-
     }
 
     public void reset() {
-
-        resourceMinHeapMap = new HashMap<Resource, Heap<ResourceOperation>>();
-
+        resourceMinHeapMap.clear();
     }
 
     public ResourceOperation getHighestPriorityForResource(Resource resource) {

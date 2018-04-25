@@ -2,12 +2,14 @@ package com.jtravan.pbs.generator;
 
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
+import org.springframework.stereotype.Component;
 
 import java.util.Random;
 
+@Component
 public class BatchFactory {
 
-    public static Transaction setAbortPercentage(Transaction transaction, int percentage) {
+    public Transaction setAbortPercentage(Transaction transaction, int percentage) {
 
         Random random = new Random();
         float chance = random.nextInt(100);
@@ -23,7 +25,7 @@ public class BatchFactory {
 
     }
 
-    public static Transaction setAbortPercentageBasedOnCategory(Transaction transaction) {
+    public Transaction setAbortPercentageBasedOnCategory(Transaction transaction) {
 
         if (transaction == null) {
             return transaction;
@@ -46,7 +48,7 @@ public class BatchFactory {
 
     }
 
-    private static int getRandomNumberInRange(int min, int max) {
+    private int getRandomNumberInRange(int min, int max) {
 
         if (min >= max) {
             throw new IllegalArgumentException("max must be greater than min");

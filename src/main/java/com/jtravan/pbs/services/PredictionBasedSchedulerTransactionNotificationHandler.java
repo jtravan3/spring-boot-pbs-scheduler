@@ -5,15 +5,26 @@ import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
+import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
 
+@Component
 public class PredictionBasedSchedulerTransactionNotificationHandler implements TransactionNotificationHandler {
 
     private List<PredictionBasedScheduler> predictionBasedSchedulerList;
+    private final ResourceNotificationManager resourceNotificationManager;
 
-    public PredictionBasedSchedulerTransactionNotificationHandler(List<PredictionBasedScheduler> predictionBasedSchedulerList) {
+    public PredictionBasedSchedulerTransactionNotificationHandler(ResourceNotificationManager resourceNotificationManager) {
+        this.resourceNotificationManager = resourceNotificationManager;
+    }
+
+    public List<PredictionBasedScheduler> getPredictionBasedSchedulerList() {
+        return predictionBasedSchedulerList;
+    }
+
+    public void setPredictionBasedSchedulerList(List<PredictionBasedScheduler> predictionBasedSchedulerList) {
         this.predictionBasedSchedulerList = predictionBasedSchedulerList;
     }
 
@@ -27,7 +38,7 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
         TransactionNotificationType type = transactionNotification.getTransactionNotificationType();
 
         PredictionBasedScheduler currentPBS = null;
-        List<PredictionBasedScheduler> notificationList = new LinkedList<PredictionBasedScheduler>();
+        List<PredictionBasedScheduler> notificationList = new LinkedList<>();
         for (PredictionBasedScheduler pbs : predictionBasedSchedulerList) {
             if (!pbs.getTransaction().equals(transaction)) {
                 notificationList.add(pbs);
@@ -45,7 +56,7 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
 
                     for (ResourceOperation ro : transaction.getResourceOperationList()) {
                         currentPBS.removeFromCorrectRCDS(ro);
-                        currentPBS.getResourceNotificationManager().unlock(ro.getResource());
+                        resourceNotificationManager.unlock(ro.getResource());
                     }
 
                     currentPBS.taskStop();

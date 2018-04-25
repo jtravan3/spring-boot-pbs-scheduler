@@ -4,9 +4,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * Created by johnravan on 3/30/16.
- */
 public class Transaction {
 
     private List<ResourceOperation> resourceOperationList;

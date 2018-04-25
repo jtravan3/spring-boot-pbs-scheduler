@@ -3,42 +3,27 @@ package com.jtravan.pbs.services;
 import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.Resource;
 import com.jtravan.pbs.model.ResourceNotification;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by johnravan on 11/17/16.
- */
+@Component
 public class ResourceNotificationManager implements ResourceNotificationHandler{
 
-    private static ResourceNotificationManager theInstance;
-    List<ResourceNotificationHandler> handlers;
-    Map<Integer, Resource> resourceIntegerMap;
+    private final List<ResourceNotificationHandler> handlers;
+    private final Map<Integer, Resource> resourceIntegerMap;
 
 
     private ResourceNotificationManager() {
-        resourceIntegerMap = new HashMap<Integer, Resource>();
-        handlers = new LinkedList<ResourceNotificationHandler>();
+        resourceIntegerMap = new HashMap<>();
+        handlers = new LinkedList<>();
 
         for (Resource resource : Resource.values()) {
             resourceIntegerMap.put(resource.getResourceNum(), resource);
         }
-    }
-
-    public static final ResourceNotificationManager getInstance(boolean createOneTimeInstance) {
-
-        if(createOneTimeInstance) {
-            return new ResourceNotificationManager();
-        } else {
-            if(theInstance == null) {
-                theInstance = new ResourceNotificationManager();
-            }
-            return theInstance;
-        }
-
     }
 
     @SuppressWarnings("Duplicates")

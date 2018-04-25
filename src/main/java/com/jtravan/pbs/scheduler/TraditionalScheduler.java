@@ -6,35 +6,44 @@ import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by johnravan on 11/17/16.
- */
+@Component
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
-    private Map<Resource, Integer> resourcesWeHaveLockOn;
+    private final Map<Resource, Integer> resourcesWeHaveLockOn;
     private Resource resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
-    private ResourceNotificationManager resourceNotificationManager;
+    private final ResourceNotificationManager resourceNotificationManager;
 
-    public TraditionalScheduler(Transaction transaction, String name) {
-        this.schedulerName = name;
-        this.transaction = transaction;
-        this.resourcesWeHaveLockOn = new HashMap<Resource, Integer>();
-        resourceNotificationManager = ResourceNotificationManager.getInstance(false);
-        resourceNotificationManager.registerHandler(this);
+    public TraditionalScheduler(ResourceNotificationManager resourceNotificationManager) {
+        this.resourcesWeHaveLockOn = new HashMap<>();
+        this.resourceNotificationManager = resourceNotificationManager;
+        this.resourceNotificationManager.registerHandler(this);
     }
 
     public void run() {
         executeTransaction();
     }
 
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    public void setSchedulerName(String schedulerName) {
+        this.schedulerName = schedulerName;
+    }
+
+    public String getSchedulerName() {
+        return schedulerName;
     }
 
     @SuppressWarnings("Duplicates")

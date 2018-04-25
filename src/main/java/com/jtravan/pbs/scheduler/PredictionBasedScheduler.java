@@ -10,27 +10,25 @@ import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
-import com.jtravan.pbs.services.PredictionBasedSchedulerActionServiceImpl;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
-import com.jtravan.pbs.services.TransactionNotificationHandler;
 import com.jtravan.pbs.services.TransactionNotificationManager;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by johnravan on 11/17/16.
- */
+@Component
 public class PredictionBasedScheduler implements TransactionExecutor,
         ResourceNotificationHandler, Runnable {
 
-    private PredictionBasedSchedulerActionService predictionBasedSchedulerActionService;
-    private ResourceCategoryDataStructure resourceCategoryDataStructure_READ;
-    private ResourceCategoryDataStructure resourceCategoryDataStructure_WRITE;
-    private ResourceNotificationManager resourceNotificationManager;
-    private Map<Resource, Integer> resourcesWeHaveLockOn_Read;
-    private Map<Resource, Integer> resourcesWeHaveLockOn_Write;
+    private final PredictionBasedSchedulerActionService predictionBasedSchedulerActionService;
+    private final ResourceCategoryDataStructure resourceCategoryDataStructure_READ;
+    private final ResourceCategoryDataStructure resourceCategoryDataStructure_WRITE;
+    private final ResourceNotificationManager resourceNotificationManager;
+    private final TransactionNotificationManager transactionNotificationManager;
+    private final Map<Resource, Integer> resourcesWeHaveLockOn_Read;
+    private final Map<Resource, Integer> resourcesWeHaveLockOn_Write;
     private Resource resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
@@ -39,30 +37,34 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     private long startTime;
     private long endTime;
 
-    public PredictionBasedScheduler(Transaction transaction, String name, boolean isSandBoxExecution) {
-        constructorOperations(transaction, name, isSandBoxExecution);
-    }
+    public PredictionBasedScheduler(ResourceNotificationManager resourceNotificationManager,
+                                    PredictionBasedSchedulerActionService predictionBasedSchedulerActionService,
+                                    ResourceCategoryDataStructure resourceCategoryDataStructure_READ,
+                                    ResourceCategoryDataStructure resourceCategoryDataStructure_WRITE,
+                                    TransactionNotificationManager transactionNotificationManager) {
 
-    private void constructorOperations(Transaction transaction, String name, boolean isSandBoxExecution) {
-        this.transaction = transaction;
-        this.schedulerName = name;
-        this.resourcesWeHaveLockOn_Read = new HashMap<Resource, Integer>();
-        this.resourcesWeHaveLockOn_Write = new HashMap<Resource, Integer>();
+        resourcesWeHaveLockOn_Read = new HashMap<>();
+        resourcesWeHaveLockOn_Write = new HashMap<>();
 
-        resourceNotificationManager = TransactionNotificationManager.getInstance(false).getResourceNotificationManager();
-        resourceNotificationManager.registerHandler(this);
-
-        predictionBasedSchedulerActionService = PredictionBasedSchedulerActionServiceImpl.getInstance(TransactionNotificationManager.getInstance(false));
-        resourceCategoryDataStructure_READ = ResourceCategoryDataStructure.getReadInstance(isSandBoxExecution);
-        resourceCategoryDataStructure_WRITE = ResourceCategoryDataStructure.getWriteInstance(isSandBoxExecution);
-    }
-
-    public ResourceNotificationManager getResourceNotificationManager() {
-        return resourceNotificationManager;
-    }
-
-    public void setResourceNotificationManager(ResourceNotificationManager resourceNotificationManager) {
         this.resourceNotificationManager = resourceNotificationManager;
+        this.transactionNotificationManager = transactionNotificationManager;
+        this.resourceNotificationManager.registerHandler(this);
+        this.predictionBasedSchedulerActionService = predictionBasedSchedulerActionService;
+        this.resourceCategoryDataStructure_READ = resourceCategoryDataStructure_READ;
+        this.resourceCategoryDataStructure_WRITE = resourceCategoryDataStructure_WRITE;
+    }
+
+    public void resetScheduler() {
+        resourcesWeHaveLockOn_Read.clear();
+        resourcesWeHaveLockOn_Write.clear();
+    }
+
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
+    public void setSchedulerName(String schedulerName) {
+        this.schedulerName = schedulerName;
     }
 
     public long getStartTime() {
@@ -342,19 +344,20 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                 try {
                     wait();
                 } catch (Exception e) {
-                    System.out.println(getSchedulerName() + ": Other transaction finished. Now retrying...");
-                    PredictionBasedScheduler predictionBasedScheduler_ForAbort = new PredictionBasedScheduler(getTransaction(),
-                            "Sandbox scheduler for " + getSchedulerName(), true);
-                    boolean isSandboxExecutionSuccess = predictionBasedScheduler_ForAbort.executeTransaction();
-
-                    if(isSandboxExecutionSuccess) {
-                        System.out.println(predictionBasedScheduler_ForAbort.getSchedulerName() + ": Sandbox Execution Succeeded, Re-Run with Main System");
-
-                        constructorOperations(transaction, schedulerName, false);
-                        executeTransaction();
-                    } else {
-                        System.out.println(predictionBasedScheduler_ForAbort.getSchedulerName() + ": Sandbox Execution Failed. Execution Complete");
-                    }
+                    //TODO: Figure out how to do this with new Spring Boot configuration
+//                    System.out.println(getSchedulerName() + ": Other transaction finished. Now retrying...");
+//
+//                    resetScheduler();
+//                    setSchedulerName("Sandbox scheduler for " + getSchedulerName());
+//                    boolean isSandboxExecutionSuccess = executeTransaction();
+//
+//                    if(isSandboxExecutionSuccess) {
+//                        System.out.println(getSchedulerName() + ": Sandbox Execution Succeeded, Re-Run with Main System");
+//
+//                        executeTransaction();
+//                    } else {
+//                        System.out.println(getSchedulerName() + ": Sandbox Execution Failed. Execution Complete");
+//                    }
                 }
             } else {
                 System.out.println(schedulerName + ": has successfully completed execution!");
@@ -363,7 +366,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                 TransactionNotification transactionNotification = new TransactionNotification();
                 transactionNotification.setTransaction(transaction);
                 transactionNotification.setTransactionNotificationType(TransactionNotificationType.TRANSACTION_COMPLETE);
-                TransactionNotificationManager.getInstance(false).handleTransactionNotification(transactionNotification);
+                transactionNotificationManager.handleTransactionNotification(transactionNotification);
 
                 resourceNotificationManager.deregisterHandler(this);
 

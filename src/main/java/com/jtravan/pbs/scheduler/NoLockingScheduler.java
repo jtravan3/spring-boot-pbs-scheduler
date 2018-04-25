@@ -10,6 +10,7 @@ import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.services.TransactionNotificationHandler;
 import com.jtravan.pbs.services.TransactionNotificationManager;
+import org.springframework.stereotype.Component;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -17,11 +18,12 @@ import java.util.List;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
+@Component
 public class NoLockingScheduler implements TransactionExecutor,
         ResourceNotificationHandler, TransactionNotificationHandler, Runnable  {
 
-    private ResourceNotificationManager resourceNotificationManager;
-    private TransactionNotificationManager scheduleNotificationManager;
+    private final ResourceNotificationManager resourceNotificationManager;
+    private final TransactionNotificationManager transactionNotificationManager;
     private Transaction transaction;
     private String schedulerName;
     private CyclicBarrier gate;
@@ -33,25 +35,26 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     private boolean isAborted;
 
-    public NoLockingScheduler(Transaction transaction, String name, boolean isSandBoxExecution) {
-        constructorOperations(transaction, name, isSandBoxExecution);
-    }
-
-    private void constructorOperations(Transaction schedule, String name, boolean isSandBoxExecution) {
-
-        this.transaction = schedule;
-        this.schedulerName = name;
+    public NoLockingScheduler(TransactionNotificationManager transactionNotificationManager,
+                              ResourceNotificationManager resourceNotificationManager) {
 
         isAborted = false;
 
-        resourceOperationList = new LinkedList<ResourceOperation>();
+        resourceOperationList = new LinkedList<>();
 
-        scheduleNotificationManager = TransactionNotificationManager.getInstance(isSandBoxExecution);
-        scheduleNotificationManager.registerHandler(this);
+        this.transactionNotificationManager = transactionNotificationManager;
+        this.transactionNotificationManager.registerHandler(this);
 
-        resourceNotificationManager = scheduleNotificationManager.getResourceNotificationManager();
-        resourceNotificationManager.registerHandler(this);
+        this.resourceNotificationManager = resourceNotificationManager;
+        this.resourceNotificationManager.registerHandler(this);
+    }
 
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
+    public void setSchedulerName(String schedulerName) {
+        this.schedulerName = schedulerName;
     }
 
     public long getStartTime() {
@@ -129,9 +132,9 @@ public class NoLockingScheduler implements TransactionExecutor,
 //        TransactionNotification scheduleNotification = new TransactionNotification();
 //        scheduleNotification.setTransaction(transaction);
 //        scheduleNotification.setTransactionNotificationType(TransactionNotificationType.TRANSACTION_COMPLETE);
-//        scheduleNotificationManager.handleTransactionNotification(scheduleNotification);
+//        transactionNotificationManager.handleTransactionNotification(scheduleNotification);
 
-//        scheduleNotificationManager.deregisterHandler(this);
+//        transactionNotificationManager.deregisterHandler(this);
 //        resourceNotificationManager.deregisterHandler(this);
 
         return true;
