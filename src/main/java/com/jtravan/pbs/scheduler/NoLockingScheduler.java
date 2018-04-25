@@ -4,14 +4,17 @@ import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
+import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.services.TransactionNotificationHandler;
 import com.jtravan.pbs.services.TransactionNotificationManager;
+import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,6 +27,7 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     private final ResourceNotificationManager resourceNotificationManager;
     private final TransactionNotificationManager transactionNotificationManager;
+    private final TransactionEventSupplier transactionEventSupplier;
     private Transaction transaction;
     private String schedulerName;
     private CyclicBarrier gate;
@@ -35,8 +39,11 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     private boolean isAborted;
 
+    private static final String NEW_LINE = "\n";
+
     public NoLockingScheduler(TransactionNotificationManager transactionNotificationManager,
-                              ResourceNotificationManager resourceNotificationManager) {
+                              ResourceNotificationManager resourceNotificationManager,
+                              TransactionEventSupplier transactionEventSupplier) {
 
         isAborted = false;
 
@@ -47,6 +54,8 @@ public class NoLockingScheduler implements TransactionExecutor,
 
         this.resourceNotificationManager = resourceNotificationManager;
         this.resourceNotificationManager.registerHandler(this);
+
+        this.transactionEventSupplier = transactionEventSupplier;
     }
 
     public void setTransaction(Transaction transaction) {
@@ -75,6 +84,11 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     public void setGate(CyclicBarrier gate) { this.gate = gate; }
 
+    public void handleTransactionEvent(String logString) {
+        TransactionEvent transactionEvent = new TransactionEvent(logString, new Date());
+        transactionEventSupplier.handleTransactionEvent(transactionEvent);
+    }
+
     @SuppressWarnings("Duplicates")
     public boolean executeTransaction() {
 
@@ -84,24 +98,32 @@ public class NoLockingScheduler implements TransactionExecutor,
 
         startTime = System.currentTimeMillis();
 
-        // two phase locking - growing phase
-        System.out.println("=========================================================");
-        System.out.println(schedulerName + ": Two-phase locking growing phase initiated.");
-        System.out.println("=========================================================");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+                .append("=========================================================")
+                .append(NEW_LINE)
+                .append(schedulerName)
+                .append(": No locking scheduler initiated." )
+                .append(NEW_LINE)
+                .append("=========================================================");
+
+        handleTransactionEvent(stringBuilder.toString());
 
         if (isAborted) {
             return handleAbortOperation();
         }
 
-        // two phase locking - shrinking phase
-        System.out.println("==========================================================");
-        System.out.println(schedulerName + ": Two-phase locking shrinking phase initiated");
-        System.out.println("==========================================================");
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
             if(resourceOperation.isAbortOperation()) {
                 isAborted = true;
-                System.out.println(schedulerName + ": Execution aborted. Compensation transaction initiated.");
+
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Execution aborted. Compensation transaction initiated." );
+
+                handleTransactionEvent(stringBuilder.toString());
             }
 
             if (isAborted) {
@@ -109,7 +131,15 @@ public class NoLockingScheduler implements TransactionExecutor,
             }
 
             try {
-                System.out.println(schedulerName + ": Executing operation on Resource " + resourceOperation.getResource());
+
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Executing operation on Resource ")
+                        .append(resourceOperation.getResource());
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 Thread.sleep(resourceOperation.getExecutionTime());
 
                 if (resourceOperation.getOperation() == Operation.WRITE) {
@@ -126,7 +156,13 @@ public class NoLockingScheduler implements TransactionExecutor,
 
         }
 
-        System.out.println(schedulerName + ": has successfully completed execution!");
+        stringBuilder = new StringBuilder();
+        stringBuilder
+                .append(schedulerName)
+                .append(": has successfully completed execution!");
+
+        handleTransactionEvent(stringBuilder.toString());
+
         endTime = System.currentTimeMillis();
 
 //        TransactionNotification scheduleNotification = new TransactionNotification();
@@ -158,8 +194,15 @@ public class NoLockingScheduler implements TransactionExecutor,
 
         isAborted = false;
 
-        System.out.println(schedulerName + ": Execution aborted");
-        System.out.println(schedulerName + ": Creating and executing compensation transaction");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+                .append(schedulerName)
+                .append(": Execution aborted")
+                .append(NEW_LINE)
+                .append(schedulerName)
+                .append(": Creating and executing compensation transaction");
+
+        handleTransactionEvent(stringBuilder.toString());
 
         Iterator<ResourceOperation> resourceOperationIterator = resourceOperationList.iterator();
         while(resourceOperationIterator.hasNext()) {
@@ -171,7 +214,14 @@ public class NoLockingScheduler implements TransactionExecutor,
             }
 
             try {
-                System.out.println(schedulerName + ": Executing operation on Resource " + resourceOperation.getResource());
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Executing operation on Resource ")
+                        .append(resourceOperation.getResource());
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 Thread.sleep(resourceOperation.getExecutionTime());
 
                 if (resourceOperation.getOperation() == Operation.WRITE) {

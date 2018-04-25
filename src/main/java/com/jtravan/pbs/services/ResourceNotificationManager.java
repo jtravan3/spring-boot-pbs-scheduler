@@ -2,9 +2,12 @@ package com.jtravan.pbs.services;
 
 import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.ResourceNotification;
+import com.jtravan.pbs.model.TransactionEvent;
+import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -12,10 +15,16 @@ import java.util.List;
 public class ResourceNotificationManager implements ResourceNotificationHandler{
 
     private final List<ResourceNotificationHandler> handlers;
+    private final TransactionEventSupplier transactionEventSupplier;
 
-
-    private ResourceNotificationManager() {
+    public ResourceNotificationManager(TransactionEventSupplier transactionEventSupplier) {
+        this.transactionEventSupplier = transactionEventSupplier;
         handlers = new LinkedList<>();
+    }
+
+    public void handleTransactionEvent(String logString) {
+        TransactionEvent transactionEvent = new TransactionEvent(logString, new Date());
+        transactionEventSupplier.handleTransactionEvent(transactionEvent);
     }
 
     @SuppressWarnings("Duplicates")
@@ -27,7 +36,13 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             ResourceNotification resourceNotification = new ResourceNotification();
             resourceNotification.setResource(resource);
             resourceNotification.setLocked(true);
-            System.out.println("Locking Resource " + resource);
+
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder
+                    .append("Locking Resource ").append(resource);
+
+            handleTransactionEvent(stringBuilder.toString());
+
             handleResourceNotification(resourceNotification);
         } else {
             if (!resource.isLocked()) {
@@ -36,7 +51,13 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
                 ResourceNotification resourceNotification = new ResourceNotification();
                 resourceNotification.setResource(resource);
                 resourceNotification.setLocked(true);
-                System.out.println("Locking Resource " + resource);
+
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append("Locking Resource ").append(resource);
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 handleResourceNotification(resourceNotification);
             } else {
                 throw new IllegalStateException("Cannot lock already locked resource that has a Write lock. Resource " + resource.toString());
@@ -51,7 +72,13 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             ResourceNotification resourceNotification = new ResourceNotification();
             resourceNotification.setResource(resource);
             resourceNotification.setLocked(false);
-            System.out.println("Unlocking Resource " + resource);
+
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder
+                    .append("Unlocking Resource ").append(resource);
+
+            handleTransactionEvent(stringBuilder.toString());
+
             handleResourceNotification(resourceNotification);
         }
     }
@@ -62,7 +89,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             return;
         }
 
-        System.out.println("Resource Notification Handler registered for notifications");
+        handleTransactionEvent("Resource Notification Handler registered for notifications");
         handlers.add(handler);
 
     }
@@ -73,7 +100,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler{
             return;
         }
 
-        System.out.println("Resource Notification Handler deregistered for notifications");
+        handleTransactionEvent("Resource Notification Handler deregistered for notifications");
         handlers.remove(handler);
 
     }

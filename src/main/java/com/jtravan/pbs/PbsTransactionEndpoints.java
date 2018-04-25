@@ -1,7 +1,10 @@
 package com.jtravan.pbs;
 
+import com.jtravan.pbs.generator.TransactionGenerator;
+import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
-import com.jtravan.pbs.suppliers.PbsTransactionEventSupplier;
+import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
+import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,17 +19,29 @@ import java.util.stream.Stream;
 @RequestMapping("/rest/pbs")
 public class PbsTransactionEndpoints {
 
-    private final PbsTransactionEventSupplier pbsTransactionEventSupplier;
+    private final TransactionEventSupplier transactionEventSupplier;
+    private final PredictionBasedScheduler predictionBasedScheduler;
+    private final TransactionGenerator transactionGenerator;
 
-    public PbsTransactionEndpoints(PbsTransactionEventSupplier pbsTransactionEventSupplier) {
-        this.pbsTransactionEventSupplier = pbsTransactionEventSupplier;
+    private final int NUM_OF_OPERATIONS = 10;
+    private int schedulerCount = 0;
+
+    public PbsTransactionEndpoints(TransactionEventSupplier transactionEventSupplier,
+                                   PredictionBasedScheduler predictionBasedScheduler,
+                                   TransactionGenerator transactionGenerator) {
+        this.transactionEventSupplier = transactionEventSupplier;
+        this.predictionBasedScheduler = predictionBasedScheduler;
+        this.transactionGenerator = transactionGenerator;
     }
 
-    @GetMapping(value = "/transaction", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<TransactionEvent> transaction() {
+    @GetMapping(value = "/start", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<TransactionEvent> start() {
+        Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
+        predictionBasedScheduler.setTransaction(transaction);
+        predictionBasedScheduler.setSchedulerName("Scheduler #" + schedulerCount++);
 
         Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
-        Flux<TransactionEvent> transactionEventFlux = Flux.fromStream(Stream.generate(pbsTransactionEventSupplier));
+        Flux<TransactionEvent> transactionEventFlux = Flux.fromStream(Stream.generate(transactionEventSupplier));
 
         return Flux.zip(interval, transactionEventFlux).map(Tuple2::getT2);
     }

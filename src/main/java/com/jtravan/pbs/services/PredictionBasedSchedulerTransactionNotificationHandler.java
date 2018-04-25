@@ -2,11 +2,14 @@ package com.jtravan.pbs.services;
 
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
+import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
+import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -15,9 +18,12 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
 
     private List<PredictionBasedScheduler> predictionBasedSchedulerList;
     private final ResourceNotificationManager resourceNotificationManager;
+    private final TransactionEventSupplier transactionEventSupplier;
 
-    public PredictionBasedSchedulerTransactionNotificationHandler(ResourceNotificationManager resourceNotificationManager) {
+    public PredictionBasedSchedulerTransactionNotificationHandler(ResourceNotificationManager resourceNotificationManager,
+                                                                  TransactionEventSupplier transactionEventSupplier) {
         this.resourceNotificationManager = resourceNotificationManager;
+        this.transactionEventSupplier = transactionEventSupplier;
     }
 
     public List<PredictionBasedScheduler> getPredictionBasedSchedulerList() {
@@ -26,6 +32,11 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
 
     public void setPredictionBasedSchedulerList(List<PredictionBasedScheduler> predictionBasedSchedulerList) {
         this.predictionBasedSchedulerList = predictionBasedSchedulerList;
+    }
+
+    public void handleTransactionEvent(String logString) {
+        TransactionEvent transactionEvent = new TransactionEvent(logString, new Date());
+        transactionEventSupplier.handleTransactionEvent(transactionEvent);
     }
 
     public void handleTransactionNotification(TransactionNotification transactionNotification) {
@@ -52,7 +63,7 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
 
                 if (transaction == currentPBS.getTransaction()) {
 
-                    System.out.println(currentPBS.getSchedulerName() + ": Aborted due to external scheduler conflict");
+                    handleTransactionEvent(currentPBS.getSchedulerName() + ": Aborted due to external scheduler conflict");
 
                     for (ResourceOperation ro : transaction.getResourceOperationList()) {
                         currentPBS.removeFromCorrectRCDS(ro);
@@ -68,7 +79,7 @@ public class PredictionBasedSchedulerTransactionNotificationHandler implements T
                 if(transaction == currentPBS.getTransaction()) {
                     // Notify any waiting
                     synchronized (currentPBS) {
-                        System.out.println(currentPBS.getSchedulerName() + ": Notifying just in case we need to start re-run");
+                        handleTransactionEvent(currentPBS.getSchedulerName() + ": Notifying just in case we need to start re-run");
                         notifyAll();
                     }
                 }

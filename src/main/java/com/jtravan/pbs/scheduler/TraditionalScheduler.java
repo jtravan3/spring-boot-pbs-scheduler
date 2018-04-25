@@ -3,26 +3,32 @@ package com.jtravan.pbs.scheduler;
 import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
+import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
+import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 @Component
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
+    private static final String NEW_LINE = "\n";
     private final Map<Employee, Integer> resourcesWeHaveLockOn;
     private Employee resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
     private final ResourceNotificationManager resourceNotificationManager;
+    private final TransactionEventSupplier transactionEventSupplier;
 
-    public TraditionalScheduler(ResourceNotificationManager resourceNotificationManager) {
+    public TraditionalScheduler(ResourceNotificationManager resourceNotificationManager, TransactionEventSupplier transactionEventSupplier) {
         this.resourcesWeHaveLockOn = new HashMap<>();
         this.resourceNotificationManager = resourceNotificationManager;
+        this.transactionEventSupplier = transactionEventSupplier;
         this.resourceNotificationManager.registerHandler(this);
     }
 
@@ -46,6 +52,11 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
         return schedulerName;
     }
 
+    public void handleTransactionEvent(String logString) {
+        TransactionEvent transactionEvent = new TransactionEvent(logString, new Date());
+        transactionEventSupplier.handleTransactionEvent(transactionEvent);
+    }
+
     @SuppressWarnings("Duplicates")
     public synchronized boolean executeTransaction() {
 
@@ -54,25 +65,56 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
         }
 
         // two phase locking - growing phase
-        System.out.println("=========================================================");
-        System.out.println(schedulerName + ": Two-phase locking growing phase initiated.");
-        System.out.println("=========================================================");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+                .append("=========================================================")
+                .append(NEW_LINE)
+                .append(schedulerName)
+                .append(": Two-phase locking growing phase initiated." )
+                .append(NEW_LINE)
+                .append("=========================================================");
+
+        handleTransactionEvent(stringBuilder.toString());
+
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
             if (resourceOperation.getResource().isLocked()) {
 
-                System.out.println(schedulerName + ": Obtaining lock for Resource " + resourceOperation.getResource());
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Obtaining lock for Resource ")
+                        .append(resourceOperation.getResource());
+
+                handleTransactionEvent(stringBuilder.toString());
+
+
                 if(resourcesWeHaveLockOn.containsKey(resourceOperation.getResource())) {
-                    System.out.println(schedulerName + ": Already have lock for Resource "
-                            + resourceOperation.getResource() + ". Continuing execution");
+
+                    stringBuilder = new StringBuilder();
+                    stringBuilder
+                            .append(schedulerName)
+                            .append(": Already have lock for Resource ")
+                            .append(resourceOperation.getResource())
+                            .append(". Continuing execution");
+
+                    handleTransactionEvent(stringBuilder.toString());
 
                     Integer lockCount = resourcesWeHaveLockOn.get(resourceOperation.getResource());
                     resourcesWeHaveLockOn.put(resourceOperation.getResource(), ++lockCount);
                     continue;
                 } else {
                     resourceWaitingOn = resourceOperation.getResource();
-                    System.out.println(schedulerName + ": Waiting for lock on Resource "
-                            + resourceOperation.getResource() + " to be released...");
+
+                    stringBuilder = new StringBuilder();
+                    stringBuilder
+                            .append(schedulerName)
+                            .append(": Waiting for lock on Resource ")
+                            .append(resourceOperation.getResource())
+                            .append(" to be released...");
+
+                    handleTransactionEvent(stringBuilder.toString());
+
                     try {
                         synchronized (this) {
                             wait();
@@ -81,8 +123,15 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
                         e.printStackTrace();
                     }
 
-                    System.out.println(schedulerName + ": Lock for Resource " + resourceOperation.getResource()
-                            + " released and obtained");
+                    stringBuilder = new StringBuilder();
+                    stringBuilder
+                            .append(schedulerName)
+                            .append(": Lock for Resource ")
+                            .append(resourceOperation.getResource())
+                            .append(" released and obtained");
+
+                    handleTransactionEvent(stringBuilder.toString());
+
                     resourcesWeHaveLockOn.put(resourceOperation.getResource(), 1);
                     resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
 
@@ -90,7 +139,14 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
             } else {
 
-                System.out.println(schedulerName + ": No lock obtained for Resource " + resourceOperation.getResource());
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": No lock obtained for Resource ")
+                        .append(resourceOperation.getResource());
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 resourcesWeHaveLockOn.put(resourceOperation.getResource(), 1);
                 resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
 
@@ -99,13 +155,28 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
         }
 
         // two phase locking - shrinking phase
-        System.out.println("==========================================================");
-        System.out.println(schedulerName + ": Two-phase locking shrinking phase initiated");
-        System.out.println("==========================================================");
+        stringBuilder = new StringBuilder();
+        stringBuilder
+                .append("=========================================================")
+                .append(NEW_LINE)
+                .append(schedulerName)
+                .append(": Two-phase locking shrinking phase initiated." )
+                .append(NEW_LINE)
+                .append("=========================================================");
+
+        handleTransactionEvent(stringBuilder.toString());
+
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
             try {
-                System.out.println(schedulerName + ": Executing operation on Resource " + resourceOperation.getResource());
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Executing operation on Resource ")
+                        .append(resourceOperation.getResource());
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 Thread.sleep(resourceOperation.getExecutionTime());
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -121,7 +192,12 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
         }
 
-        System.out.println(schedulerName + ": has successfully completed execution!");
+        stringBuilder = new StringBuilder();
+        stringBuilder
+                .append(schedulerName)
+                .append(": has successfully completed execution!");
+
+        handleTransactionEvent(stringBuilder.toString());
 
         return true;
     }
@@ -135,8 +211,16 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
         if (!resourceNotification.isLocked()) {
             if (resourceNotification.getResource() == resourceWaitingOn) {
-                System.out.println(schedulerName + ": Resource, " + resourceNotification.getResource()
-                        + ", that we have been waiting on, has been released and unlocked ");
+
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Resource, ")
+                        .append(resourceNotification.getResource())
+                        .append(", that we have been waiting on, has been released and unlocked");
+
+                handleTransactionEvent(stringBuilder.toString());
+
                 synchronized (this) {
                     notifyAll();
                 }
