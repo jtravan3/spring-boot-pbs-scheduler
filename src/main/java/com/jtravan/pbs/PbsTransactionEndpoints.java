@@ -6,6 +6,7 @@ import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.util.function.Tuple2;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.stream.Stream;
 
 @RestController
@@ -40,9 +42,11 @@ public class PbsTransactionEndpoints {
         Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
         predictionBasedScheduler.setTransaction(transaction);
         predictionBasedScheduler.setSchedulerName("Scheduler #" + schedulerCount++);
+        predictionBasedScheduler.run();
 
-        Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
-        Flux<TransactionEvent> transactionEventFlux = Flux.fromStream(Stream.generate(transactionEventSupplier));
+        Flux<Long> interval = Flux.interval(Duration.ofMillis(200));
+        Flux<TransactionEvent> transactionEventFlux = Flux.fromStream(Stream.generate(transactionEventSupplier))
+                .onErrorReturn(new TransactionEvent("PROCESSING COMPLETE", new Date()));
 
         return Flux.zip(interval, transactionEventFlux).map(Tuple2::getT2);
     }

@@ -13,6 +13,7 @@ import com.jtravan.pbs.services.TransactionNotificationHandler;
 import com.jtravan.pbs.services.TransactionNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.SessionScope;
 
 import java.util.Date;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
 @Component
+@SessionScope
 public class NoLockingScheduler implements TransactionExecutor,
         ResourceNotificationHandler, TransactionNotificationHandler, Runnable  {
 
@@ -262,14 +264,6 @@ public class NoLockingScheduler implements TransactionExecutor,
         switch (type) {
             case ABORT:
             case TRANSACTION_COMPLETE:
-
-//                if(transaction != this.transaction) {
-//                    // Notify any waiting
-//                    synchronized (this) {
-//                        System.out.println(schedulerName + ": Notifying just in case we need to start re-run");
-//                        notifyAll();
-//                    }
-//                }
 
                 break;
             default:

@@ -9,12 +9,14 @@ import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.SessionScope;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@SessionScope
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
     private static final String NEW_LINE = "\n";
@@ -58,7 +60,7 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
     }
 
     @SuppressWarnings("Duplicates")
-    public synchronized boolean executeTransaction() {
+    public boolean executeTransaction() {
 
         if (transaction == null) {
             return false;
@@ -220,10 +222,6 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
                         .append(", that we have been waiting on, has been released and unlocked");
 
                 handleTransactionEvent(stringBuilder.toString());
-
-                synchronized (this) {
-                    notifyAll();
-                }
             }
         }
 

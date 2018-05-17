@@ -3,7 +3,8 @@ package com.jtravan.pbs.services;
 import com.jtravan.pbs.model.Action;
 import com.jtravan.pbs.model.Category;
 import com.jtravan.pbs.model.Operation;
-import com.jtravan.pbs.model.ResourceCategoryDataStructure;
+import com.jtravan.pbs.model.ResourceCategoryDataStructure_READ;
+import com.jtravan.pbs.model.ResourceCategoryDataStructure_WRITE;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,7 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
         this.transactionNotificationManager = transactionNotificationManager;
     }
 
-    public synchronized Action determineSchedulerAction(ResourceCategoryDataStructure rcdsRead, ResourceCategoryDataStructure rcdsWrite, ResourceOperation resourceOperation) {
+    public synchronized Action determineSchedulerAction(ResourceCategoryDataStructure_READ rcdsRead, ResourceCategoryDataStructure_WRITE rcdsWrite, ResourceOperation resourceOperation) {
 
         Employee resource = resourceOperation.getResource();
 

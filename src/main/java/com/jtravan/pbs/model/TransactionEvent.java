@@ -4,6 +4,7 @@ import java.util.Date;
 
 public class TransactionEvent {
 
+    private boolean isComplete = false;
     private String value;
     private Date date;
 
@@ -26,6 +27,14 @@ public class TransactionEvent {
 
     public void setDate(Date date) {
         this.date = date;
+    }
+
+    public boolean isComplete() {
+        return isComplete;
+    }
+
+    public void setComplete(boolean complete) {
+        isComplete = complete;
     }
 
     @Override

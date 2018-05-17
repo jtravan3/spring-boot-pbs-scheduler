@@ -1,14 +1,9 @@
 package com.jtravan.pbs.model;
 
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Component
-@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 @SuppressWarnings("ALL")
 public class ResourceCategoryDataStructure {
 
