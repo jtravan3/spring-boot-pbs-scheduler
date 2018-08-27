@@ -9,11 +9,9 @@ import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
-import com.jtravan.pbs.services.TransactionNotificationHandler;
-import com.jtravan.pbs.services.TransactionNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.SessionScope;
+import org.springframework.web.context.annotation.RequestScope;
 
 import java.util.Date;
 import java.util.Iterator;
@@ -23,12 +21,11 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
 @Component
-@SessionScope
+@RequestScope
 public class NoLockingScheduler implements TransactionExecutor,
-        ResourceNotificationHandler, TransactionNotificationHandler, Runnable  {
+        ResourceNotificationHandler, Runnable  {
 
     private final ResourceNotificationManager resourceNotificationManager;
-    private final TransactionNotificationManager transactionNotificationManager;
     private final TransactionEventSupplier transactionEventSupplier;
     private Transaction transaction;
     private String schedulerName;
@@ -43,16 +40,12 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     private static final String NEW_LINE = "\n";
 
-    public NoLockingScheduler(TransactionNotificationManager transactionNotificationManager,
-                              ResourceNotificationManager resourceNotificationManager,
+    public NoLockingScheduler(ResourceNotificationManager resourceNotificationManager,
                               TransactionEventSupplier transactionEventSupplier) {
 
         isAborted = false;
 
         resourceOperationList = new LinkedList<>();
-
-        this.transactionNotificationManager = transactionNotificationManager;
-        this.transactionNotificationManager.registerHandler(this);
 
         this.resourceNotificationManager = resourceNotificationManager;
         this.resourceNotificationManager.registerHandler(this);

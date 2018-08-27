@@ -17,7 +17,7 @@ public class ResourceCategoryDataStructure {
         resourceMinHeapMap.clear();
     }
 
-    public ResourceOperation getHighestPriorityForResource(Employee resource) {
+    public synchronized ResourceOperation getHighestPriorityForResource(Employee resource) {
 
         if(resource == null) {
             return null;
@@ -33,7 +33,7 @@ public class ResourceCategoryDataStructure {
         }
     }
 
-    public void insertResourceOperationForResource(Employee resource, ResourceOperation resourceOperation) {
+    public synchronized void insertResourceOperationForResource(Employee resource, ResourceOperation resourceOperation) {
 
         if(resource == null || resourceOperation == null) {
             throw new IllegalArgumentException("Resource or Resource Operation is null");
@@ -54,7 +54,7 @@ public class ResourceCategoryDataStructure {
         }
     }
 
-    public void removeResourceOperationForResouce(Employee resource, ResourceOperation resourceOperation) {
+    public synchronized void removeResourceOperationForResouce(Employee resource, ResourceOperation resourceOperation) {
 
         if(resource == null || resourceOperation == null) {
             throw new IllegalArgumentException("Resource or Resource Operation is null");
@@ -86,15 +86,15 @@ public class ResourceCategoryDataStructure {
 
     }
 
-    public Set<Employee> getResourceSet() {
-        return resourceMinHeapMap.keySet();
-    }
+//    public Set<Employee> getResourceSet() {
+//        return resourceMinHeapMap.keySet();
+//    }
+//
+//    public Heap getHeapForResource(Employee resource) {
+//        return resourceMinHeapMap.get(resource);
+//    }
 
-    public Heap getHeapForResource(Employee resource) {
-        return resourceMinHeapMap.get(resource);
-    }
-
-    public void clearHeapForResource(Employee resource) {
+    public synchronized void clearHeapForResource(Employee resource) {
         resourceMinHeapMap.get(resource).clear();
         resourceMinHeapMap.put(resource, null);
     }

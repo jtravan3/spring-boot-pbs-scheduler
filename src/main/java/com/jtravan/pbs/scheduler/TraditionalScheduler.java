@@ -9,6 +9,7 @@ import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.context.annotation.SessionScope;
 
 import java.util.Date;
@@ -16,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@SessionScope
+@RequestScope
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
     private static final String NEW_LINE = "\n";

@@ -1,6 +1,6 @@
 package com.jtravan.pbs.model;
 
-public class TransactionNotification {
+public class TransactionNotification extends ResourceNotification {
 
     private TransactionNotificationType transactionNotificationType;
     private Transaction transaction;

@@ -8,12 +8,15 @@ import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
+import com.jtravan.pbs.model.TransactionNotification;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.context.annotation.SessionScope;
 
 import java.time.temporal.ChronoUnit;
@@ -22,8 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-@Component
-@SessionScope
 public class PredictionBasedScheduler implements TransactionExecutor,
         ResourceNotificationHandler, Runnable {
 
@@ -99,7 +100,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
             if(resourceOperation.isAbortOperation()) {
-                handleAbortOperation();
+                handleAbortOperation(": Execution aborted from within");
                 return false;
             }
 
@@ -184,8 +185,8 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                         handleTransactionEvent(stringBuilder.toString());
 
                         insertIntoCorrectRCDS(resourceOperation);
+                        lockResource(resourceOperation);
                         resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
-                        resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
                     }
 
                     break;
@@ -199,7 +200,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                     handleTransactionEvent(stringBuilder.toString());
 
                     resourceWaitingOn = resourceOperation.getResource();
-                    resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
+
+                    lockResource(resourceOperation);
+
                     if(resourceOperation.getOperation() == Operation.READ) {
                         resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
                     } else {
@@ -250,9 +253,11 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                                 .append(schedulerName)
                                 .append(": No lock obtained for Resource" )
                                 .append(resourceOperation.getResource())
-                                .append(". Locking now...");
+                                .append(". Attempting to lock now...");
 
                         handleTransactionEvent(stringBuilder.toString());
+
+                        lockResource(resourceOperation);
 
                         if (resourceOperation.getOperation() == Operation.READ) {
                             resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
@@ -260,7 +265,6 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                             resourcesWeHaveLockOn_Write.put(resourceOperation.getResource(), 1);
                         }
 
-                        resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
                     }
 
                     break;
@@ -291,7 +295,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
             if(resourceOperation.isAbortOperation()) {
-                handleAbortOperation();
+                handleAbortOperation(": Execution aborted from within");
                 return false;
             }
 
@@ -307,7 +311,14 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
                 Thread.sleep(resourceOperation.getExecutionTime());
             } catch (InterruptedException e) {
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Interrupted Exception" )
+                        .append(e)
+                        .toString();
 
+                handleTransactionEvent(stringBuilder.toString());
             }
 
             Integer lockCount;
@@ -370,6 +381,42 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         transactionEventSupplier.handleTransactionEvent(transactionEvent);
     }
 
+    private void lockResource(ResourceOperation resourceOperation) {
+        StringBuilder stringBuilder = null;
+        while (true) {
+            try {
+                resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
+                break;
+            } catch (IllegalStateException ex) {
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Resource: " )
+                        .append(resourceOperation.getResource())
+                        .append(" is already locked. Requesting lock and waiting");
+
+                handleTransactionEvent(stringBuilder.toString());
+
+                Future<String> request = resourceNotificationManager.requestLock(resourceOperation.getResource(), resourceOperation.getOperation());
+
+                while(true) {
+                    if(request.isDone()) {
+                        break;
+                    }
+                }
+
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Resource: " )
+                        .append(resourceOperation.getResource())
+                        .append(" is released and requesting lock again");
+
+                handleTransactionEvent(stringBuilder.toString());
+            }
+        }
+    }
+
     @SuppressWarnings("Duplicates")
     public boolean executeTransaction() {
 
@@ -397,7 +444,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         return true;
     }
 
-    public void insertIntoCorrectRCDS(ResourceOperation resourceOperation) {
+    public synchronized void insertIntoCorrectRCDS(ResourceOperation resourceOperation) {
 
         if (resourceOperation.getOperation() == Operation.READ) {
             resourceCategoryDataStructure_READ.insertResourceOperationForResource(resourceOperation.getResource(), resourceOperation);
@@ -407,7 +454,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
     }
 
-    public void removeFromCorrectRCDS(ResourceOperation resourceOperation) {
+    public synchronized void removeFromCorrectRCDS(ResourceOperation resourceOperation) {
 
         if (resourceOperation.getOperation() == Operation.READ) {
             resourceCategoryDataStructure_READ.removeResourceOperationForResouce(resourceOperation.getResource(), resourceOperation);
@@ -417,6 +464,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
     }
 
+    @Async
     public void run() {
 
         try {
@@ -450,12 +498,20 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         } catch (Exception ex) {}
     }
 
-    private boolean handleAbortOperation() {
+    private boolean handleAbortOperation(String reason) {
+
+        for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
+            resourceNotificationManager.unlock(resourceOperation.getResource());
+        }
+
+        resourcesWeHaveLockOn_Write.clear();
+        resourcesWeHaveLockOn_Read.clear();
+        resourceWaitingOn = null;
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
                 .append(schedulerName)
-                .append(": Execution aborted from within")
+                .append(reason)
                 .append(NEW_LINE)
                 .append(schedulerName)
                 .append(": Waiting and trying execution again");
@@ -472,18 +528,23 @@ public class PredictionBasedScheduler implements TransactionExecutor,
             return;
         }
 
-        if (!resourceNotification.isLocked()) {
-            if (resourceNotification.getResource() == resourceWaitingOn) {
+        // It's an abort if it is
+        if (resourceNotification instanceof TransactionNotification) {
+            handleAbortOperation(": Execution aborted due to ELEVATE action");
+        } else {
+            if (!resourceNotification.isLocked()) {
+                if (resourceNotification.getResource() == resourceWaitingOn) {
 
-                StringBuilder stringBuilder = new StringBuilder();
-                stringBuilder
-                        .append(schedulerName)
-                        .append(": Resource, ")
-                        .append(resourceNotification.getResource())
-                        .append(", that we have been waiting on, has been released and unlocked ");
+                    StringBuilder stringBuilder = new StringBuilder();
+                    stringBuilder
+                            .append(schedulerName)
+                            .append(": Resource, ")
+                            .append(resourceNotification.getResource())
+                            .append(", that we have been waiting on, has been released and unlocked ");
 
                     handleTransactionEvent(stringBuilder.toString());
 
+                }
             }
         }
     }

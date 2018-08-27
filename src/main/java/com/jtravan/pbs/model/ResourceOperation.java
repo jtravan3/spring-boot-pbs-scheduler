@@ -39,7 +39,7 @@ public class ResourceOperation {
         return executionTime_InMilliSeconds;
     }
 
-    public void setExecutionTime(int executionTime) {
+    public void setExecutionTime(long executionTime) {
         this.executionTime_InMilliSeconds = executionTime;
     }
 

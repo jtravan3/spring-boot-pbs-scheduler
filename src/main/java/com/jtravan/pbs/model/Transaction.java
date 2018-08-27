@@ -12,7 +12,7 @@ public class Transaction {
     private Category category;
 
     public Transaction() {
-        resourceOperationList = new LinkedList<ResourceOperation>();
+        resourceOperationList = new LinkedList<>();
     }
 
     public Category getCategory() {
@@ -28,6 +28,10 @@ public class Transaction {
             return;
         }
         resourceOperationList.add(resourceOperation);
+    }
+
+    public void setResourceOperationList(List<ResourceOperation> resourceOperationList) {
+        this.resourceOperationList = resourceOperationList;
     }
 
     public ResourceOperation getNextResourceOperation() {
@@ -60,6 +64,26 @@ public class Transaction {
 
         return rtnList;
 
+    }
+
+    public Transaction createCopy() {
+        Transaction transaction = new Transaction();
+        transaction.setCategory(this.category);
+
+        List<ResourceOperation> tempList = new LinkedList<>();
+        for(ResourceOperation resourceOperation : this.resourceOperationList) {
+            ResourceOperation newRO = new ResourceOperation();
+            newRO.setAssociatedTransaction(transaction);
+            newRO.setExecutionTime(resourceOperation.getExecutionTime());
+            newRO.setIsCommitOperation(resourceOperation.isCommitOperation());
+            newRO.setOperation(resourceOperation.getOperation());
+            newRO.setResource(resourceOperation.getResource());
+            newRO.setAbortOperation(resourceOperation.isAbortOperation());
+            tempList.add(newRO);
+        }
+
+        transaction.setResourceOperationList(tempList);
+        return transaction;
     }
 
     @Override

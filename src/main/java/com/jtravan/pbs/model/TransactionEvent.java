@@ -7,6 +7,7 @@ public class TransactionEvent {
     private boolean isComplete = false;
     private String value;
     private Date date;
+    private Throwable exception;
 
     public TransactionEvent(String value, Date date) {
         this.value = value;
@@ -37,11 +38,21 @@ public class TransactionEvent {
         isComplete = complete;
     }
 
+    public Throwable getException() {
+        return exception;
+    }
+
+    public void setException(Throwable exception) {
+        this.exception = exception;
+    }
+
     @Override
     public String toString() {
         return "TransactionEvent{" +
-                "value='" + value + '\'' +
+                "isComplete=" + isComplete +
+                ", value='" + value + '\'' +
                 ", date=" + date +
+                ", exception=" + exception +
                 '}';
     }
 }

@@ -13,10 +13,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class PredictionBasedSchedulerActionServiceImpl implements PredictionBasedSchedulerActionService {
 
-    private final TransactionNotificationManager transactionNotificationManager;
+    private final ResourceNotificationManager resourceNotificationManager;
 
-    public PredictionBasedSchedulerActionServiceImpl(TransactionNotificationManager transactionNotificationManager) {
-        this.transactionNotificationManager = transactionNotificationManager;
+    public PredictionBasedSchedulerActionServiceImpl(ResourceNotificationManager resourceNotificationManager) {
+        this.resourceNotificationManager = resourceNotificationManager;
     }
 
     public synchronized Action determineSchedulerAction(ResourceCategoryDataStructure_READ rcdsRead, ResourceCategoryDataStructure_WRITE rcdsWrite, ResourceOperation resourceOperation) {
@@ -34,13 +34,14 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
                 } else {
 
-                    if (Category.isCategory1HigherThanCategory2(resourceOperation.getAssociatedTransaction().getCategory(),
-                            rcdsRead.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory())) {
+                    Category requestingCategory = resourceOperation.getAssociatedTransaction().getCategory();
+                    Category existingCategory = rcdsRead.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory();
+                    if (Category.isCategory1HigherThanCategory2(requestingCategory, existingCategory)) {
 
                         // Means a write operation needs to operate on something that has a read lock of lower priority.
                         // We are going to elevate it
                         ResourceOperation ro = rcdsRead.getHighestPriorityForResource(resource);
-                        transactionNotificationManager.abortTransaction(ro.getAssociatedTransaction());
+                        resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                         rcdsRead.clearHeapForResource(resource);
                         rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                         return Action.ELEVATE;
@@ -57,8 +58,10 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
             } else { // rcdsWrite is not empty
 
-                if (Category.isCategory1HigherThanOrEqualCategory2(rcdsWrite.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory(),
-                        resourceOperation.getAssociatedTransaction().getCategory())) {
+                Category existingWriteCategory = rcdsWrite.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory();
+                Category requestingCategory = resourceOperation.getAssociatedTransaction().getCategory();
+
+                if (Category.isCategory1HigherThanOrEqualCategory2(existingWriteCategory, requestingCategory)) {
 
                     // There is a write lock granted but the requesting lock is not high enough to elevate it. We must wait
                     return Action.DECLINE;
@@ -70,27 +73,27 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                         // The granted write lock has a lower priority than the requesting one AND there is no
                         // read lock granted so we are good to elevate
                         ResourceOperation ro = rcdsWrite.getHighestPriorityForResource(resource);
-                        transactionNotificationManager.abortTransaction(ro.getAssociatedTransaction());
+                        resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                         rcdsWrite.clearHeapForResource(resource);
                         rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                         return Action.ELEVATE;
 
                     } else {
 
-                        if (Category.isCategory1HigherThanCategory2(resourceOperation.getAssociatedTransaction().getCategory(),
-                                rcdsRead.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory())) {
+                        Category existingReadCategory = rcdsRead.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory();
+                        if (Category.isCategory1HigherThanCategory2(requestingCategory, existingReadCategory )) {
 
                             // The granted write lock has a lower priority than the requesting one AND the
                             // read lock granted has a lower priority so we are good to elevate over both
 
                             // Abort read lock
                             ResourceOperation ro = rcdsRead.getHighestPriorityForResource(resource);
-                            transactionNotificationManager.abortTransaction(ro.getAssociatedTransaction());
+                            resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                             rcdsRead.clearHeapForResource(resource);
 
                             // Abort write lock
                             ResourceOperation ro2 = rcdsWrite.getHighestPriorityForResource(resource);
-                            transactionNotificationManager.abortTransaction(ro2.getAssociatedTransaction());
+                            resourceNotificationManager.abortTransaction(ro2.getAssociatedTransaction());
                             rcdsWrite.clearHeapForResource(resource);
                             rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                             return Action.ELEVATE;
@@ -119,8 +122,9 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
             } else {
 
-                if (Category.isCategory1HigherThanOrEqualCategory2(rcdsWrite.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory(),
-                        resourceOperation.getAssociatedTransaction().getCategory())) {
+                Category existingWriteCategory = rcdsWrite.getHighestPriorityForResource(resource).getAssociatedTransaction().getCategory();
+                Category requestingCategory = resourceOperation.getAssociatedTransaction().getCategory();
+                if (Category.isCategory1HigherThanOrEqualCategory2(existingWriteCategory, requestingCategory)) {
 
                     // There is a write lock granted AND it has a higher priority than the requesting lock
                     // so we must wait
@@ -131,7 +135,7 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                     // There is a write lock granted BUT it has a lower priority than the requesting lock
                     // so we can elevate
                     ResourceOperation ro = rcdsWrite.getHighestPriorityForResource(resource);
-                    transactionNotificationManager.abortTransaction(ro.getAssociatedTransaction());
+                    resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                     rcdsWrite.clearHeapForResource(resource);
                     rcdsRead.insertResourceOperationForResource(resource, resourceOperation);
                     return Action.ELEVATE;

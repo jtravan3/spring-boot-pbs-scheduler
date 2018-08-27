@@ -2,7 +2,10 @@ package com.jtravan.pbs.services;
 
 import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.ResourceNotification;
+import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
+import com.jtravan.pbs.model.TransactionNotification;
+import com.jtravan.pbs.model.TransactionNotificationType;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.scheduling.annotation.Async;
@@ -31,7 +34,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
     }
 
     @SuppressWarnings("Duplicates")
-    public void lock(Employee resource, Operation operation) {
+    public synchronized void lock(Employee resource, Operation operation) {
 
         if (operation == Operation.READ) {
             resource.setLocked(true);
@@ -68,7 +71,6 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
         }
     }
 
-    @Async
     public Future<String> requestLock(Employee resource, Operation operation) {
         while(true) {
             if (operation == Operation.READ) {
@@ -81,7 +83,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
         }
     }
 
-    public void unlock(Employee resource) {
+    public synchronized void unlock(Employee resource) {
         if (resource.isLocked()) {
             resource.setLocked(false);
 
@@ -99,7 +101,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
         }
     }
 
-    public synchronized void registerHandler (ResourceNotificationHandler handler) {
+    public void registerHandler (ResourceNotificationHandler handler) {
 
         if (handler == null) {
             return;
@@ -110,7 +112,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
 
     }
 
-    public synchronized void deregisterHandler (ResourceNotificationHandler handler) {
+    public void deregisterHandler (ResourceNotificationHandler handler) {
 
         if (handler == null) {
             return;
@@ -121,7 +123,7 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
 
     }
 
-    public synchronized void handleResourceNotification(ResourceNotification resourceNotification) {
+    public void handleResourceNotification(ResourceNotification resourceNotification) {
 
         if (resourceNotification == null) {
             return;
@@ -132,6 +134,19 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
                 handler.handleResourceNotification(resourceNotification);
             }
         }
+
+    }
+
+    public void abortTransaction(Transaction transaction) {
+
+        if (transaction == null) {
+            return;
+        }
+
+        TransactionNotification transactionNotification = new TransactionNotification();
+        transactionNotification.setTransaction(transaction);
+        transactionNotification.setTransactionNotificationType(TransactionNotificationType.ABORT);
+        handleResourceNotification(transactionNotification);
 
     }
 }
