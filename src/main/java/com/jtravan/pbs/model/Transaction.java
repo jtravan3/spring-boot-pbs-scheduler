@@ -105,4 +105,12 @@ public class Transaction {
         return builder.toString();
     }
 
+    public long getExecutionTime() {
+        long executionTimeCount = 0;
+        for (ResourceOperation resourceOperation : resourceOperationList) {
+            executionTimeCount+=resourceOperation.getExecutionTime();
+        }
+        return executionTimeCount;
+    }
+
 }

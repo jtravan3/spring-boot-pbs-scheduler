@@ -9,6 +9,7 @@ import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.model.TransactionNotification;
+import com.jtravan.pbs.services.MetricsAggregator;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
@@ -32,6 +33,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     private final ResourceCategoryDataStructure_READ resourceCategoryDataStructure_READ;
     private final ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE;
     private final ResourceNotificationManager resourceNotificationManager;
+    private final MetricsAggregator metricsAggregator;
     private final TransactionEventSupplier transactionEventSupplier;
     private final Map<Employee, Integer> resourcesWeHaveLockOn_Read;
     private final Map<Employee, Integer> resourcesWeHaveLockOn_Write;
@@ -45,7 +47,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                                     PredictionBasedSchedulerActionService predictionBasedSchedulerActionService,
                                     ResourceCategoryDataStructure_READ resourceCategoryDataStructure_READ,
                                     ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE,
-                                    TransactionEventSupplier transactionEventSupplier) {
+                                    TransactionEventSupplier transactionEventSupplier, MetricsAggregator metricsAggregator) {
 
         resourcesWeHaveLockOn_Read = new HashMap<>();
         resourcesWeHaveLockOn_Write = new HashMap<>();
@@ -56,6 +58,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         this.predictionBasedSchedulerActionService = predictionBasedSchedulerActionService;
         this.resourceCategoryDataStructure_READ = resourceCategoryDataStructure_READ;
         this.resourceCategoryDataStructure_WRITE = resourceCategoryDataStructure_WRITE;
+        this.metricsAggregator = metricsAggregator;
     }
 
     public void resetScheduler() {
@@ -430,15 +433,10 @@ public class PredictionBasedScheduler implements TransactionExecutor,
             return false;
         }
 
-        Date end = new Date();
-        long seconds = ChronoUnit.MILLIS.between(start.toInstant(), end.toInstant());
-
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
                 .append(schedulerName)
-                .append(": TIME TILL COMPLETION: " )
-                .append(seconds)
-                .append(" milliseconds");
+                .append(": executeTransaction() method complete" );
         handleTransactionEvent(stringBuilder.toString());
 
         return true;
@@ -503,6 +501,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
             resourceNotificationManager.unlock(resourceOperation.getResource());
         }
+
+        long abortCount = metricsAggregator.getAbortCount();
+        metricsAggregator.setAbortCount(++abortCount);
 
         resourcesWeHaveLockOn_Write.clear();
         resourcesWeHaveLockOn_Read.clear();

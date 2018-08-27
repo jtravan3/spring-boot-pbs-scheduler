@@ -14,9 +14,13 @@ import org.springframework.stereotype.Component;
 public class PredictionBasedSchedulerActionServiceImpl implements PredictionBasedSchedulerActionService {
 
     private final ResourceNotificationManager resourceNotificationManager;
+    private final MetricsAggregator metricsAggregator;
 
-    public PredictionBasedSchedulerActionServiceImpl(ResourceNotificationManager resourceNotificationManager) {
+    public PredictionBasedSchedulerActionServiceImpl(ResourceNotificationManager resourceNotificationManager,
+                                                     MetricsAggregator metricsAggregator) {
+
         this.resourceNotificationManager = resourceNotificationManager;
+        this.metricsAggregator = metricsAggregator;
     }
 
     public synchronized Action determineSchedulerAction(ResourceCategoryDataStructure_READ rcdsRead, ResourceCategoryDataStructure_WRITE rcdsWrite, ResourceOperation resourceOperation) {
@@ -30,6 +34,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                 if (rcdsRead.getHighestPriorityForResource(resource) == null) {
 
                     // Means there is currently no lock granted for the resource. Free for all...
+                    long grantCount = metricsAggregator.getGrantCount();
+                    metricsAggregator.setGrantCount(++grantCount);
                     return Action.GRANT;
 
                 } else {
@@ -44,12 +50,16 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                         resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                         rcdsRead.clearHeapForResource(resource);
                         rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
+                        long elevateCount = metricsAggregator.getElevateCount();
+                        metricsAggregator.setElevateCount(++elevateCount);
                         return Action.ELEVATE;
 
                     } else {
 
                         // Means a write operation needs to operate however, the lock that is currently granted has a
                         // higher priority and we must wait
+                        long declineCount = metricsAggregator.getDeclineCount();
+                        metricsAggregator.setDeclineCount(++declineCount);
                         return Action.DECLINE;
 
                     }
@@ -64,6 +74,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                 if (Category.isCategory1HigherThanOrEqualCategory2(existingWriteCategory, requestingCategory)) {
 
                     // There is a write lock granted but the requesting lock is not high enough to elevate it. We must wait
+                    long declineCount = metricsAggregator.getDeclineCount();
+                    metricsAggregator.setDeclineCount(++declineCount);
                     return Action.DECLINE;
 
                 } else {
@@ -76,6 +88,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                         resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                         rcdsWrite.clearHeapForResource(resource);
                         rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
+                        long elevateCount = metricsAggregator.getElevateCount();
+                        metricsAggregator.setElevateCount(++elevateCount);
                         return Action.ELEVATE;
 
                     } else {
@@ -96,12 +110,16 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                             resourceNotificationManager.abortTransaction(ro2.getAssociatedTransaction());
                             rcdsWrite.clearHeapForResource(resource);
                             rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
+                            long elevateCount = metricsAggregator.getElevateCount();
+                            metricsAggregator.setElevateCount(++elevateCount);
                             return Action.ELEVATE;
 
                         } else {
 
                             // The granted write lock has a lower priority than the requesting one BUT the
                             // read lock granted has a higher priority so we must wait
+                            long declineCount = metricsAggregator.getDeclineCount();
+                            metricsAggregator.setDeclineCount(++declineCount);
                             return Action.DECLINE;
 
                         }
@@ -118,6 +136,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
                 // There is no write locks granted so we are good to go. There can be shared
                 // read locks granted
+                long grantCount = metricsAggregator.getGrantCount();
+                metricsAggregator.setGrantCount(++grantCount);
                 return Action.GRANT;
 
             } else {
@@ -128,6 +148,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
                     // There is a write lock granted AND it has a higher priority than the requesting lock
                     // so we must wait
+                    long declineCount = metricsAggregator.getDeclineCount();
+                    metricsAggregator.setDeclineCount(++declineCount);
                     return Action.DECLINE;
 
                 } else {
@@ -138,6 +160,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                     resourceNotificationManager.abortTransaction(ro.getAssociatedTransaction());
                     rcdsWrite.clearHeapForResource(resource);
                     rcdsRead.insertResourceOperationForResource(resource, resourceOperation);
+                    long elevateCount = metricsAggregator.getElevateCount();
+                    metricsAggregator.setElevateCount(++elevateCount);
                     return Action.ELEVATE;
 
                 }

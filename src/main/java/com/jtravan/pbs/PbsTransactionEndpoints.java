@@ -7,6 +7,7 @@ import com.jtravan.pbs.model.ResourceCategoryDataStructure_WRITE;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
+import com.jtravan.pbs.services.MetricsAggregator;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
@@ -34,14 +36,16 @@ public class PbsTransactionEndpoints {
     private final PredictionBasedSchedulerActionService predictionBasedSchedulerActionService;
     private final ResourceCategoryDataStructure_READ resourceCategoryDataStructure_READ;
     private final ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE;
+    private final MetricsAggregator metricsAggregator;
 
     private final int NUM_OF_OPERATIONS = 10;
-    private int schedulerCount = 0;
 
     public PbsTransactionEndpoints(TransactionEventSupplier transactionEventSupplier, TransactionGenerator transactionGenerator,
                                    ResourceNotificationManager resourceNotificationManager, PredictionBasedSchedulerActionService predictionBasedSchedulerActionService,
-                                   ResourceCategoryDataStructure_READ resourceCategoryDataStructure_READ, ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE) {
+                                   ResourceCategoryDataStructure_READ resourceCategoryDataStructure_READ, ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE,
+                                   MetricsAggregator metricsAggregator) {
 
+        this.metricsAggregator = metricsAggregator;
         this.transactionEventSupplier = transactionEventSupplier;
         this.transactionGenerator = transactionGenerator;
         this.resourceNotificationManager = resourceNotificationManager;
@@ -64,12 +68,12 @@ public class PbsTransactionEndpoints {
         transactionEventSupplier.clearSupplier();
         Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
 
-        PredictionBasedScheduler pbs1 = createPredictionBasedScheduler(transaction.createCopy());
-        PredictionBasedScheduler pbs2 = createPredictionBasedScheduler(transaction.createCopy());
+        PredictionBasedScheduler pbs1 = createPredictionBasedScheduler(transaction.createCopy(), 0);
+        PredictionBasedScheduler pbs2 = createPredictionBasedScheduler(transaction.createCopy(), 1);
 
         Transaction t = transaction.createCopy();
         t.setCategory(Category.HCHE);
-        PredictionBasedScheduler pbs3 = createPredictionBasedScheduler(t);
+        PredictionBasedScheduler pbs3 = createPredictionBasedScheduler(t, 2);
 
         (new Thread(pbs1)).start();
         Thread.sleep(500);
@@ -81,24 +85,59 @@ public class PbsTransactionEndpoints {
     }
 
     @Transactional
-    @GetMapping(value = "/start/so", produces = MediaType.TEXT_PLAIN_VALUE)
-    public String startSystemOut() throws InterruptedException {
+    @GetMapping(value = "/start/sametrans/so/{scheduleCount}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String startSameSystemOut(@PathVariable Long scheduleCount) throws InterruptedException {
+
+        metricsAggregator.clear();
+        metricsAggregator.setScheduleCount(scheduleCount);
 
         transactionEventSupplier.clearSupplier();
         Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
+        metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
 
-        PredictionBasedScheduler pbs1 = createPredictionBasedScheduler(transaction.createCopy());
-        PredictionBasedScheduler pbs2 = createPredictionBasedScheduler(transaction.createCopy());
+        metricsAggregator.setStartTime(new Date());
+        for(int i = 0; i < scheduleCount; i++) {
+            PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
+            (new Thread(pbs)).start();
+            Thread.sleep(200);
+        }
 
-        Transaction t = transaction.createCopy();
-        t.setCategory(Category.HCHE);
-        PredictionBasedScheduler pbs3 = createPredictionBasedScheduler(t);
+        printAndEndProcess();
+        metricsAggregator.setTotalTimeWithoutExecution(transaction.getExecutionTime() * scheduleCount);
+        metricsAggregator.setEndTime(new Date());
 
-        (new Thread(pbs1)).start();
-        //Thread.sleep(500);
-        (new Thread(pbs2)).start();
-        Thread.sleep(500);
-        (new Thread(pbs3)).start();
+        return metricsAggregator.toString();
+    }
+
+    @Transactional
+    @GetMapping(value = "/start/difftrans/so/{scheduleCount}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String startDifferentSystemOut(@PathVariable Long scheduleCount) throws InterruptedException {
+
+        metricsAggregator.clear();
+        metricsAggregator.setScheduleCount(scheduleCount);
+
+        transactionEventSupplier.clearSupplier();
+        metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
+
+        metricsAggregator.setStartTime(new Date());
+        long executionTime = 0;
+        for(int i = 0; i < scheduleCount; i++) {
+            Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
+            executionTime += transaction.getExecutionTime();
+            PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
+            (new Thread(pbs)).start();
+            Thread.sleep(200);
+        }
+
+        printAndEndProcess();
+        metricsAggregator.setTotalTimeWithoutExecution(executionTime);
+        metricsAggregator.setEndTime(new Date());
+
+
+        return metricsAggregator.toString();
+    }
+
+    private void printAndEndProcess() {
 
         boolean doContinue = true;
         while(doContinue) {
@@ -110,19 +149,17 @@ public class PbsTransactionEndpoints {
             }
         }
 
-        return "COMPLETE";
     }
 
-
     @Async
-    public PredictionBasedScheduler createPredictionBasedScheduler(Transaction transaction) {
+    public PredictionBasedScheduler createPredictionBasedScheduler(Transaction transaction, int schedulerCount) {
         PredictionBasedScheduler predictionBasedScheduler =
                 new PredictionBasedScheduler(resourceNotificationManager,
                         predictionBasedSchedulerActionService, resourceCategoryDataStructure_READ,
-                        resourceCategoryDataStructure_WRITE, transactionEventSupplier);
+                        resourceCategoryDataStructure_WRITE, transactionEventSupplier, metricsAggregator);
 
         predictionBasedScheduler.setTransaction(transaction);
-        predictionBasedScheduler.setSchedulerName("Scheduler #" + schedulerCount++);
+        predictionBasedScheduler.setSchedulerName("Scheduler #" + schedulerCount);
         return predictionBasedScheduler;
     }
 }
