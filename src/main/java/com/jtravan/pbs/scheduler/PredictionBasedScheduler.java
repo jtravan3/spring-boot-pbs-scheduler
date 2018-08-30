@@ -16,15 +16,14 @@ import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.RequestScope;
-import org.springframework.web.context.annotation.SessionScope;
 
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PredictionBasedScheduler implements TransactionExecutor,
         ResourceNotificationHandler, Runnable {
@@ -40,6 +39,8 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     private Employee resourceWaitingOn;
     private Transaction transaction;
     private String schedulerName;
+
+    private AtomicBoolean isInterrupted = new AtomicBoolean(false);
 
     private static final String NEW_LINE = "\n";
 
@@ -82,7 +83,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         return schedulerName;
     }
 
-    private boolean growingPhaseSuccessful() {
+    private boolean growingPhaseSuccessful() throws InterruptedException {
 
         if (transaction == null) {
             return false;
@@ -101,6 +102,10 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         handleTransactionEvent(stringBuilder.toString());
 
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
+
+            if(isInterrupted.get()) {
+                throw new InterruptedException();
+            }
 
             if(resourceOperation.isAbortOperation()) {
                 handleAbortOperation(": Execution aborted from within");
@@ -154,6 +159,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                         handleTransactionEvent(stringBuilder.toString());
 
                         Integer lockCount = resourcesWeHaveLockOn_Read.get(resourceOperation.getResource());
+                        if (lockCount == null) {
+                            lockCount = 0;
+                        }
                         lockCount++;
                         insertIntoCorrectRCDS(resourceOperation);
                         resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), lockCount);
@@ -281,7 +289,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
     }
 
-    private boolean shrinkingPhaseSuccessful() {
+    private boolean shrinkingPhaseSuccessful() throws InterruptedException {
 
         // two phase locking - shrinking phase
         StringBuilder stringBuilder = new StringBuilder();
@@ -296,6 +304,10 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         handleTransactionEvent(stringBuilder.toString());
 
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
+
+            if(isInterrupted.get()) {
+                throw new InterruptedException();
+            }
 
             if(resourceOperation.isAbortOperation()) {
                 handleAbortOperation(": Execution aborted from within");
@@ -385,7 +397,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     }
 
     private void lockResource(ResourceOperation resourceOperation) {
-        StringBuilder stringBuilder = null;
+        StringBuilder stringBuilder;
         while (true) {
             try {
                 resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
@@ -421,16 +433,22 @@ public class PredictionBasedScheduler implements TransactionExecutor,
     }
 
     @SuppressWarnings("Duplicates")
-    public boolean executeTransaction() {
-
-        Date start = new Date();
+    public boolean executeTransaction() throws InterruptedException {
 
         if (!growingPhaseSuccessful()) {
             return false;
         }
 
+        if(isInterrupted.get()) {
+            throw new InterruptedException();
+        }
+
         if (!shrinkingPhaseSuccessful()) {
             return false;
+        }
+
+        if(isInterrupted.get()) {
+            throw new InterruptedException();
         }
 
         StringBuilder stringBuilder = new StringBuilder();
@@ -442,27 +460,34 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         return true;
     }
 
-    public synchronized void insertIntoCorrectRCDS(ResourceOperation resourceOperation) {
+    public void insertIntoCorrectRCDS(ResourceOperation resourceOperation) {
 
         if (resourceOperation.getOperation() == Operation.READ) {
-            resourceCategoryDataStructure_READ.insertResourceOperationForResource(resourceOperation.getResource(), resourceOperation);
+            synchronized (resourceCategoryDataStructure_READ) {
+                resourceCategoryDataStructure_READ.insertResourceOperationForResource(resourceOperation.getResource(), resourceOperation);
+            }
         } else {
-            resourceCategoryDataStructure_WRITE.insertResourceOperationForResource(resourceOperation.getResource(), resourceOperation);
+            synchronized (resourceCategoryDataStructure_WRITE) {
+                resourceCategoryDataStructure_WRITE.insertResourceOperationForResource(resourceOperation.getResource(), resourceOperation);
+            }
         }
 
     }
 
-    public synchronized void removeFromCorrectRCDS(ResourceOperation resourceOperation) {
+    public void removeFromCorrectRCDS(ResourceOperation resourceOperation) {
 
         if (resourceOperation.getOperation() == Operation.READ) {
-            resourceCategoryDataStructure_READ.removeResourceOperationForResouce(resourceOperation.getResource(), resourceOperation);
+            synchronized (resourceCategoryDataStructure_READ) {
+                resourceCategoryDataStructure_READ.removeResourceOperationForResouce(resourceOperation.getResource(), resourceOperation);
+            }
         } else {
-            resourceCategoryDataStructure_WRITE.removeResourceOperationForResouce(resourceOperation.getResource(), resourceOperation);
+            synchronized (resourceCategoryDataStructure_WRITE) {
+                resourceCategoryDataStructure_WRITE.removeResourceOperationForResouce(resourceOperation.getResource(), resourceOperation);
+            }
         }
 
     }
 
-    @Async
     public void run() {
 
         try {
@@ -493,7 +518,18 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                 //TODO: Figure out how to rerun with new Spring boot configuration
 
             }
-        } catch (Exception ex) {}
+        } catch (InterruptedException ex) { //
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder
+                    .append(schedulerName)
+                    .append(": Aborted/Interrupted. Execution complete." );
+
+            handleTransactionEvent(stringBuilder.toString());
+
+            for(ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
+                resourceNotificationManager.unlock(resourceOperation.getResource());
+            }
+        }
     }
 
     private boolean handleAbortOperation(String reason) {
@@ -502,8 +538,8 @@ public class PredictionBasedScheduler implements TransactionExecutor,
             resourceNotificationManager.unlock(resourceOperation.getResource());
         }
 
-        long abortCount = metricsAggregator.getAbortCount();
-        metricsAggregator.setAbortCount(++abortCount);
+        long abortCount = metricsAggregator.getPbsAbortCount();
+        metricsAggregator.setPbsAbortCount(++abortCount);
 
         resourcesWeHaveLockOn_Write.clear();
         resourcesWeHaveLockOn_Read.clear();
@@ -518,6 +554,10 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                 .append(": Waiting and trying execution again");
 
         handleTransactionEvent(stringBuilder.toString());
+
+        if (reason.contains("ELEVATE")) {
+            isInterrupted.set(true);
+        }
 
         return false;
     }

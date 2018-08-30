@@ -6,7 +6,9 @@ import com.jtravan.pbs.model.ResourceCategoryDataStructure_READ;
 import com.jtravan.pbs.model.ResourceCategoryDataStructure_WRITE;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
+import com.jtravan.pbs.scheduler.NoLockingScheduler;
 import com.jtravan.pbs.scheduler.PredictionBasedScheduler;
+import com.jtravan.pbs.scheduler.TraditionalScheduler;
 import com.jtravan.pbs.services.MetricsAggregator;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationManager;
@@ -23,6 +25,11 @@ import reactor.util.function.Tuple2;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 @RestController
@@ -95,7 +102,7 @@ public class PbsTransactionEndpoints {
         Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
         metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
 
-        metricsAggregator.setStartTime(new Date());
+        metricsAggregator.setPbsStartTime(new Date());
         for(int i = 0; i < scheduleCount; i++) {
             PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
             (new Thread(pbs)).start();
@@ -104,7 +111,7 @@ public class PbsTransactionEndpoints {
 
         printAndEndProcess();
         metricsAggregator.setTotalTimeWithoutExecution(transaction.getExecutionTime() * scheduleCount);
-        metricsAggregator.setEndTime(new Date());
+        metricsAggregator.setPbsEndTime(new Date());
 
         return metricsAggregator.toString();
     }
@@ -113,26 +120,61 @@ public class PbsTransactionEndpoints {
     @GetMapping(value = "/start/difftrans/so/{scheduleCount}", produces = MediaType.TEXT_PLAIN_VALUE)
     public String startDifferentSystemOut(@PathVariable Long scheduleCount) throws InterruptedException {
 
+        int i; // loop counter
         metricsAggregator.clear();
         metricsAggregator.setScheduleCount(scheduleCount);
-
-        transactionEventSupplier.clearSupplier();
         metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
 
-        metricsAggregator.setStartTime(new Date());
         long executionTime = 0;
-        for(int i = 0; i < scheduleCount; i++) {
+        List<Transaction> transactionList = new LinkedList<>();
+        for(int count = 0; count < scheduleCount; count++) {
             Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
             executionTime += transaction.getExecutionTime();
+            transactionList.add(transaction);
+        }
+        metricsAggregator.setTotalTimeWithoutExecution(executionTime);
+
+        // PBS Specific
+        transactionEventSupplier.clearSupplier();
+        metricsAggregator.setPbsStartTime(new Date());
+        i = 0;
+        for(Transaction transaction : transactionList) {
             PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
+            i++;
             (new Thread(pbs)).start();
             Thread.sleep(200);
         }
 
         printAndEndProcess();
-        metricsAggregator.setTotalTimeWithoutExecution(executionTime);
-        metricsAggregator.setEndTime(new Date());
+        metricsAggregator.setPbsEndTime(new Date());
 
+        // Traditional Specific
+        transactionEventSupplier.clearSupplier();
+        metricsAggregator.setTsStartTime(new Date());
+        i = 0;
+        for(Transaction transaction : transactionList) {
+            TraditionalScheduler ts = createTraditionalScheduler(transaction.createCopy(), i);
+            i++;
+            (new Thread(ts)).start();
+            Thread.sleep(200);
+        }
+
+        printAndEndProcess();
+        metricsAggregator.setTsEndTime(new Date());
+
+        // No-locking Specific
+        transactionEventSupplier.clearSupplier();
+        metricsAggregator.setNlStartTime(new Date());
+        i = 0;
+        for(Transaction transaction : transactionList) {
+            NoLockingScheduler nl = createNoLockingScheduler(transaction.createCopy(), i);
+            i++;
+            (new Thread(nl)).start();
+            Thread.sleep(200);
+        }
+
+        printAndEndProcess();
+        metricsAggregator.setNlEndTime(new Date());
 
         return metricsAggregator.toString();
     }
@@ -151,15 +193,32 @@ public class PbsTransactionEndpoints {
 
     }
 
-    @Async
-    public PredictionBasedScheduler createPredictionBasedScheduler(Transaction transaction, int schedulerCount) {
+    private PredictionBasedScheduler createPredictionBasedScheduler(Transaction transaction, int schedulerCount) {
         PredictionBasedScheduler predictionBasedScheduler =
                 new PredictionBasedScheduler(resourceNotificationManager,
                         predictionBasedSchedulerActionService, resourceCategoryDataStructure_READ,
                         resourceCategoryDataStructure_WRITE, transactionEventSupplier, metricsAggregator);
 
         predictionBasedScheduler.setTransaction(transaction);
-        predictionBasedScheduler.setSchedulerName("Scheduler #" + schedulerCount);
+        predictionBasedScheduler.setSchedulerName("PBS Scheduler #" + schedulerCount);
         return predictionBasedScheduler;
+    }
+
+    private TraditionalScheduler createTraditionalScheduler(Transaction transaction, int schedulerCount) {
+        TraditionalScheduler traditionalScheduler =
+                new TraditionalScheduler(resourceNotificationManager, transactionEventSupplier, metricsAggregator);
+
+        traditionalScheduler.setTransaction(transaction);
+        traditionalScheduler.setSchedulerName("Traditional Scheduler #" + schedulerCount);
+        return traditionalScheduler;
+    }
+
+    private NoLockingScheduler createNoLockingScheduler(Transaction transaction, int schedulerCount) {
+        NoLockingScheduler noLockingScheduler =
+                new NoLockingScheduler(resourceNotificationManager, transactionEventSupplier, metricsAggregator);
+
+        noLockingScheduler.setTransaction(transaction);
+        noLockingScheduler.setSchedulerName("No-locking Scheduler #" + schedulerCount);
+        return noLockingScheduler;
     }
 }

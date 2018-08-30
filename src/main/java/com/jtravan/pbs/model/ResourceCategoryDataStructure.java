@@ -14,89 +14,93 @@ public class ResourceCategoryDataStructure {
     }
 
     public void reset() {
-        resourceMinHeapMap.clear();
-    }
-
-    public synchronized ResourceOperation getHighestPriorityForResource(Employee resource) {
-
-        if(resource == null) {
-            return null;
-        }
-
-        Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
-
-        if(resourceOperationHeap == null) {
-            resourceMinHeapMap.put(resource, new Heap<ResourceOperation>(new ResourceOperationComparator()));
-            return null;
-        } else {
-            return resourceOperationHeap.top();
+        synchronized (resourceMinHeapMap) {
+            resourceMinHeapMap.clear();
         }
     }
 
-    public synchronized void insertResourceOperationForResource(Employee resource, ResourceOperation resourceOperation) {
+    public ResourceOperation getHighestPriorityForResource(Employee resource) {
 
-        if(resource == null || resourceOperation == null) {
-            throw new IllegalArgumentException("Resource or Resource Operation is null");
+        synchronized (resourceMinHeapMap) {
+            if(resource == null) {
+                return null;
+            }
+
+            Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
+
+            if(resourceOperationHeap == null) {
+                resourceMinHeapMap.put(resource, new Heap<ResourceOperation>(new ResourceOperationComparator()));
+                return null;
+            } else {
+                return resourceOperationHeap.top();
+            }
         }
 
-        if(resourceOperation.isCommitOperation()) {
-            return;
-        }
-
-        Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
-        if(resourceOperationHeap == null) {
-            resourceOperationHeap = new Heap<ResourceOperation>(new ResourceOperationComparator());
-            resourceOperationHeap.insert(resourceOperation);
-            resourceMinHeapMap.put(resource, resourceOperationHeap);
-        } else {
-            resourceOperationHeap.insert(resourceOperation);
-            resourceMinHeapMap.put(resource, resourceOperationHeap);
-        }
     }
 
-    public synchronized void removeResourceOperationForResouce(Employee resource, ResourceOperation resourceOperation) {
+    public void insertResourceOperationForResource(Employee resource, ResourceOperation resourceOperation) {
 
-        if(resource == null || resourceOperation == null) {
-            throw new IllegalArgumentException("Resource or Resource Operation is null");
+        synchronized (resourceMinHeapMap) {
+            if(resource == null || resourceOperation == null) {
+                throw new IllegalArgumentException("Resource or Resource Operation is null");
+            }
+
+            if(resourceOperation.isCommitOperation()) {
+                return;
+            }
+
+            Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
+            if(resourceOperationHeap == null) {
+                resourceOperationHeap = new Heap<ResourceOperation>(new ResourceOperationComparator());
+                resourceOperationHeap.insert(resourceOperation);
+                resourceMinHeapMap.put(resource, resourceOperationHeap);
+            } else {
+                resourceOperationHeap.insert(resourceOperation);
+                resourceMinHeapMap.put(resource, resourceOperationHeap);
+            }
         }
 
-        if(resourceOperation.isCommitOperation()) {
-            return;
-        }
+    }
 
-        Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
-        if(resourceOperationHeap == null) {
-            return;
-        } else {
+    public void removeResourceOperationForResouce(Employee resource, ResourceOperation resourceOperation) {
 
-            List<ResourceOperation> resourceOperationList = new LinkedList<ResourceOperation>();
+        synchronized (resourceMinHeapMap) {
+            if(resource == null || resourceOperation == null) {
+                throw new IllegalArgumentException("Resource or Resource Operation is null");
+            }
 
-            int sizeOfList = resourceOperationHeap.getHeapNodes().size();
-            for(int i = 0; i < sizeOfList; i++) {
-                ResourceOperation ro = resourceOperationHeap.pop();
-                if(ro != resourceOperation) {
-                    resourceOperationList.add(ro);
+            if(resourceOperation.isCommitOperation()) {
+                return;
+            }
+
+            Heap<ResourceOperation> resourceOperationHeap = resourceMinHeapMap.get(resource);
+            if(resourceOperationHeap == null) {
+                return;
+            } else {
+
+                List<ResourceOperation> resourceOperationList = new LinkedList<ResourceOperation>();
+
+                int sizeOfList = resourceOperationHeap.getHeapNodes().size();
+                for(int i = 0; i < sizeOfList; i++) {
+                    ResourceOperation ro = resourceOperationHeap.pop();
+                    if(ro != resourceOperation) {
+                        resourceOperationList.add(ro);
+                    }
+                }
+
+                for (ResourceOperation roToAdd : resourceOperationList) {
+                    resourceOperationHeap.insert(roToAdd);
                 }
             }
-
-            for (ResourceOperation roToAdd : resourceOperationList) {
-                resourceOperationHeap.insert(roToAdd);
-            }
         }
 
     }
 
-//    public Set<Employee> getResourceSet() {
-//        return resourceMinHeapMap.keySet();
-//    }
-//
-//    public Heap getHeapForResource(Employee resource) {
-//        return resourceMinHeapMap.get(resource);
-//    }
-
-    public synchronized void clearHeapForResource(Employee resource) {
-        resourceMinHeapMap.get(resource).clear();
-        resourceMinHeapMap.put(resource, null);
+    public void clearHeapForResource(Employee resource) {
+        synchronized (resourceMinHeapMap) {
+            resourceMinHeapMap.get(resource).clear();
+            resourceMinHeapMap.put(resource, null);
+        }
     }
 
     public void printHeap(Heap heap) {

@@ -4,20 +4,19 @@ import com.jtravan.pbs.model.ResourceNotification;
 import com.jtravan.pbs.model.ResourceOperation;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
+import com.jtravan.pbs.services.MetricsAggregator;
 import com.jtravan.pbs.services.ResourceNotificationHandler;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.RequestScope;
-import org.springframework.web.context.annotation.SessionScope;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 @Component
-@RequestScope
 public class TraditionalScheduler implements TransactionExecutor, ResourceNotificationHandler, Runnable {
 
     private static final String NEW_LINE = "\n";
@@ -27,11 +26,14 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
     private String schedulerName;
     private final ResourceNotificationManager resourceNotificationManager;
     private final TransactionEventSupplier transactionEventSupplier;
+    private final MetricsAggregator metricsAggregator;
 
-    public TraditionalScheduler(ResourceNotificationManager resourceNotificationManager, TransactionEventSupplier transactionEventSupplier) {
+    public TraditionalScheduler(ResourceNotificationManager resourceNotificationManager,
+                                TransactionEventSupplier transactionEventSupplier, MetricsAggregator metricsAggregator) {
         this.resourcesWeHaveLockOn = new HashMap<>();
         this.resourceNotificationManager = resourceNotificationManager;
         this.transactionEventSupplier = transactionEventSupplier;
+        this.metricsAggregator = metricsAggregator;
         this.resourceNotificationManager.registerHandler(this);
     }
 
@@ -81,7 +83,12 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
-            if (resourceOperation.getResource().isLocked()) {
+            if(resourceOperation.isAbortOperation()) {
+                handleAbortOperation(": Execution aborted from within");
+                return false;
+            }
+
+            if (resourceOperation.getResource().isLocked().get()) {
 
                 stringBuilder = new StringBuilder();
                 stringBuilder
@@ -92,7 +99,7 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
                 handleTransactionEvent(stringBuilder.toString());
 
 
-                if(resourcesWeHaveLockOn.containsKey(resourceOperation.getResource())) {
+                if (resourcesWeHaveLockOn.containsKey(resourceOperation.getResource())) {
 
                     stringBuilder = new StringBuilder();
                     stringBuilder
@@ -118,13 +125,7 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
                     handleTransactionEvent(stringBuilder.toString());
 
-                    try {
-                        synchronized (this) {
-                            wait();
-                        }
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                    lockResource(resourceOperation);
 
                     stringBuilder = new StringBuilder();
                     stringBuilder
@@ -135,12 +136,12 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
                     handleTransactionEvent(stringBuilder.toString());
 
-                    resourcesWeHaveLockOn.put(resourceOperation.getResource(), 1);
-                    resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
-
                 }
 
             } else {
+
+                resourcesWeHaveLockOn.put(resourceOperation.getResource(), 1);
+                resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
 
                 stringBuilder = new StringBuilder();
                 stringBuilder
@@ -149,9 +150,6 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
                         .append(resourceOperation.getResource());
 
                 handleTransactionEvent(stringBuilder.toString());
-
-                resourcesWeHaveLockOn.put(resourceOperation.getResource(), 1);
-                resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
 
             }
 
@@ -171,6 +169,11 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
 
         for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
 
+            if(resourceOperation.isAbortOperation()) {
+                handleAbortOperation(": Execution aborted from within");
+                return false;
+            }
+
             try {
                 stringBuilder = new StringBuilder();
                 stringBuilder
@@ -186,11 +189,15 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
             }
 
             Integer lockCount = resourcesWeHaveLockOn.get(resourceOperation.getResource());
-            if (lockCount == 1) {
+            if (lockCount != null && lockCount == 1) {
                 resourcesWeHaveLockOn.remove(resourceOperation.getResource());
                 resourceNotificationManager.unlock(resourceOperation.getResource());
             } else {
-                resourcesWeHaveLockOn.put(resourceOperation.getResource(), --lockCount);
+                if (lockCount == null) {
+                    resourcesWeHaveLockOn.put(resourceOperation.getResource(), 0);
+                } else {
+                    resourcesWeHaveLockOn.put(resourceOperation.getResource(), --lockCount);
+                }
             }
 
         }
@@ -203,6 +210,87 @@ public class TraditionalScheduler implements TransactionExecutor, ResourceNotifi
         handleTransactionEvent(stringBuilder.toString());
 
         return true;
+    }
+
+    private boolean lockResource(ResourceOperation resourceOperation) {
+
+        StringBuilder stringBuilder;
+        long startTime = System.currentTimeMillis(); //fetch starting time
+        boolean isDeadLocked = false;
+
+        while (true) {
+            try {
+                resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
+                break;
+            } catch (IllegalStateException ex) {
+                stringBuilder = new StringBuilder();
+                stringBuilder
+                        .append(schedulerName)
+                        .append(": Resource: " )
+                        .append(resourceOperation.getResource())
+                        .append(" is already locked. Requesting lock and waiting");
+
+                handleTransactionEvent(stringBuilder.toString());
+
+                Future<String> request = resourceNotificationManager.requestLock(resourceOperation.getResource(), resourceOperation.getOperation());
+
+                while(true) {
+                    if(request.isDone()) {
+                        stringBuilder = new StringBuilder();
+                        stringBuilder
+                                .append(schedulerName)
+                                .append(": Resource: " )
+                                .append(resourceOperation.getResource())
+                                .append(" is released and requesting lock again");
+
+                        handleTransactionEvent(stringBuilder.toString());
+                        isDeadLocked =  false;
+                        break;
+                    }
+                }
+
+                // If locked for 10 seconds then deadlocked
+                if ((System.currentTimeMillis()-startTime) < 10000) {
+                    metricsAggregator.setTsDeadLocked(true);
+                    stringBuilder = new StringBuilder();
+                    stringBuilder
+                            .append(schedulerName)
+                            .append(": Deadlocked on Resource: " )
+                            .append(resourceOperation.getResource());
+
+                    handleTransactionEvent(stringBuilder.toString());
+                    isDeadLocked =  true;
+                    break;
+                }
+            }
+        }
+
+        return isDeadLocked;
+    }
+
+    private boolean handleAbortOperation(String reason) {
+
+        for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
+            resourceNotificationManager.unlock(resourceOperation.getResource());
+        }
+
+        long abortCount = metricsAggregator.getTsAbortCount();
+        metricsAggregator.setTsAbortCount(++abortCount);
+
+        resourcesWeHaveLockOn.clear();
+        resourceWaitingOn = null;
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+                .append(schedulerName)
+                .append(reason)
+                .append(NEW_LINE)
+                .append(schedulerName)
+                .append(": Waiting and trying execution again");
+
+        handleTransactionEvent(stringBuilder.toString());
+
+        return false;
     }
 
     @SuppressWarnings("Duplicates")

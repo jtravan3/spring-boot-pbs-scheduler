@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Document
 public class Employee {
@@ -12,17 +13,17 @@ public class Employee {
     private String id;
     private String name;
     private Long salary;
-    private boolean isLocked;
+    private AtomicBoolean isLocked;
 
     public Employee() {
-        isLocked = false;
+        isLocked = new AtomicBoolean(false);
     }
 
     public Employee(String id, String name, Long salary) {
         this.id = id;
         this.name = name;
         this.salary = salary;
-        isLocked = false;
+        isLocked = new AtomicBoolean(false);
     }
 
     public String getId() {
@@ -49,11 +50,11 @@ public class Employee {
         this.salary = salary;
     }
 
-    public boolean isLocked() {
+    public AtomicBoolean isLocked() {
         return isLocked;
     }
 
-    public void setLocked(boolean locked) {
+    public void setLocked(AtomicBoolean locked) {
         isLocked = locked;
     }
 
