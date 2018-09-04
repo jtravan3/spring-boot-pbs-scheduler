@@ -4,6 +4,7 @@ import com.jtravan.pbs.generator.TransactionGenerator;
 import com.jtravan.pbs.model.Category;
 import com.jtravan.pbs.model.ResourceCategoryDataStructure_READ;
 import com.jtravan.pbs.model.ResourceCategoryDataStructure_WRITE;
+import com.jtravan.pbs.model.TestCase;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.model.TransactionEvent;
 import com.jtravan.pbs.scheduler.NoLockingScheduler;
@@ -12,6 +13,7 @@ import com.jtravan.pbs.scheduler.TraditionalScheduler;
 import com.jtravan.pbs.services.MetricsAggregator;
 import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationManager;
+import com.jtravan.pbs.services.TestCaseFactory;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
@@ -45,7 +47,7 @@ public class PbsTransactionEndpoints {
     private final ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE;
     private final MetricsAggregator metricsAggregator;
 
-    private final int NUM_OF_OPERATIONS = 10;
+    private final int NUM_OF_OPERATIONS = 100;
 
     public PbsTransactionEndpoints(TransactionEventSupplier transactionEventSupplier, TransactionGenerator transactionGenerator,
                                    ResourceNotificationManager resourceNotificationManager, PredictionBasedSchedulerActionService predictionBasedSchedulerActionService,
@@ -117,13 +119,16 @@ public class PbsTransactionEndpoints {
     }
 
     @Transactional
-    @GetMapping(value = "/start/difftrans/so/{scheduleCount}", produces = MediaType.TEXT_PLAIN_VALUE)
-    public String startDifferentSystemOut(@PathVariable Long scheduleCount) throws InterruptedException {
+    @GetMapping(value = "/start/difftrans/so/{testCaseNumber}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String startDifferentSystemOut(@PathVariable Long testCaseNumber) throws InterruptedException {
 
+        int scheduleCount = 100;
         int i; // loop counter
         metricsAggregator.clear();
         metricsAggregator.setScheduleCount(scheduleCount);
         metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
+
+        TestCase testCase = TestCaseFactory.getTestCaseByTestCaseNumber(testCaseNumber);
 
         long executionTime = 0;
         List<Transaction> transactionList = new LinkedList<>();
@@ -133,6 +138,8 @@ public class PbsTransactionEndpoints {
             transactionList.add(transaction);
         }
         metricsAggregator.setTotalTimeWithoutExecution(executionTime);
+
+        transactionList = transactionGenerator.setCategoriesByTestCase(transactionList, testCase);
 
         // PBS Specific
         transactionEventSupplier.clearSupplier();
@@ -220,5 +227,72 @@ public class PbsTransactionEndpoints {
         noLockingScheduler.setTransaction(transaction);
         noLockingScheduler.setSchedulerName("No-locking Scheduler #" + schedulerCount);
         return noLockingScheduler;
+    }
+
+
+    /**
+     * TESTING
+     */
+
+    @Transactional
+    @GetMapping(value = "/start/test/{testCaseNumber}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String testSetCategory_TestCase(@PathVariable Long testCaseNumber) {
+
+        TestCase testCase = TestCaseFactory.getTestCaseByTestCaseNumber(testCaseNumber);
+
+        List<Transaction> transactionList = new LinkedList<>();
+        for(int i = 0; i < 100; i++) {
+            Transaction t = transactionGenerator.generateRandomTransaction(100);
+            transactionList.add(t);
+        }
+
+        transactionList = transactionGenerator.setCategoriesByTestCase(transactionList, testCase);
+
+        return countAndPrintList(transactionList);
+    }
+
+    private String countAndPrintList(List<Transaction> transactionList) {
+        int hcheCount = 0;
+        int hcleCount = 0;
+        int lcheCount = 0;
+        int lcleCount = 0;
+        for (Transaction t : transactionList) {
+            switch (t.getCategory()) {
+                case HCHE:
+                    hcheCount++;
+                    break;
+                case HCLE:
+                    hcleCount++;
+                    break;
+                case LCHE:
+                    lcheCount++;
+                    break;
+                case LCLE:
+                    lcleCount++;
+                    break;
+                default:
+
+            }
+        }
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder
+                .append("Total: ")
+                .append(transactionList.size())
+                .append(System.lineSeparator())
+                .append("HCHE: ")
+                .append(hcheCount)
+                .append(System.lineSeparator())
+                .append("HCLE: ")
+                .append(hcleCount)
+                .append(System.lineSeparator())
+                .append("LCHE: ")
+                .append(lcheCount)
+                .append(System.lineSeparator())
+                .append("LCLE: ")
+                .append(lcleCount)
+                .append(System.lineSeparator());
+
+        return stringBuilder.toString();
     }
 }

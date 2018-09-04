@@ -3,6 +3,7 @@ package com.jtravan.pbs.generator;
 import com.jtravan.pbs.model.Category;
 import com.jtravan.pbs.model.Operation;
 import com.jtravan.pbs.model.ResourceOperation;
+import com.jtravan.pbs.model.TestCase;
 import com.jtravan.pbs.model.Transaction;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
@@ -32,6 +33,166 @@ public class TransactionGenerator {
         this.resourceNotificationManager = resourceNotificationManager;
         this.abortPercentageFactory = abortPercentageFactory;
         this.employeeRepository = employeeRepository;
+    }
+
+    public List<Transaction> setCategoriesByTestCase(List<Transaction> transactionList, TestCase testCase) {
+
+        // TC #1
+        if (testCase.getHchePercentage() == 100) {
+            for(Transaction t : transactionList) {
+                t.setCategory(Category.HCHE);
+            }
+            return transactionList;
+        }
+
+        // TC #7
+        if (testCase.getLclePercentage() == 100) {
+            for(Transaction t : transactionList) {
+                t.setCategory(Category.LCLE);
+            }
+            return transactionList;
+        }
+
+        // TC #2
+        if (testCase.getHchePercentage() == 75) {
+
+            for (Transaction t : transactionList) {
+                t.setCategory(null);
+            }
+
+            long size = transactionList.size();
+            long percentHCHE = Math.round(size * 0.75);
+
+            for (int i = 0; i < percentHCHE; i++) {
+                transactionList.get(i).setCategory(Category.HCHE);
+            }
+
+            for (Transaction t : transactionList) {
+                if (t.getCategory() == null) {
+                    t.setCategory(Category.HCLE);
+                }
+            }
+
+            return transactionList;
+        }
+
+        // TC #6
+        if (testCase.getLclePercentage() == 75) {
+
+            for (Transaction t : transactionList) {
+                t.setCategory(null);
+            }
+
+            long size = transactionList.size();
+            long percentLCLE = Math.round(size * 0.75);
+
+            for (int i = 0; i < percentLCLE; i++) {
+                transactionList.get(i).setCategory(Category.LCLE);
+            }
+
+            for (Transaction t : transactionList) {
+                if (t.getCategory() == null) {
+                    t.setCategory(Category.LCHE);
+                }
+            }
+
+            return transactionList;
+        }
+
+        // TC #3
+        if (testCase.getHchePercentage() == 50) {
+
+            for (Transaction t : transactionList) {
+                t.setCategory(null);
+            }
+
+            long size = transactionList.size();
+            long percentHCHE = Math.round(size * 0.50);
+
+            for (int i = 0; i < percentHCHE; i++) {
+                transactionList.get(i).setCategory(Category.HCHE);
+            }
+
+            int count = 0;
+            for (Transaction t : transactionList) {
+                if (t.getCategory() == null) {
+                    if (count % 2 == 0) {
+                        t.setCategory(Category.HCLE);
+                    } else {
+                        t.setCategory(Category.LCHE);
+                    }
+                    count++;
+                }
+            }
+
+            return transactionList;
+        }
+
+        // TC #5
+        if (testCase.getLclePercentage() == 50) {
+
+            for (Transaction t : transactionList) {
+                t.setCategory(null);
+            }
+
+            long size = transactionList.size();
+            long percentLCLE = Math.round(size * 0.50);
+
+            for (int i = 0; i < percentLCLE; i++) {
+                transactionList.get(i).setCategory(Category.LCLE);
+            }
+
+            int count = 0;
+            for (Transaction t : transactionList) {
+                if (t.getCategory() == null) {
+                    if (count % 2 == 0) {
+                        t.setCategory(Category.HCLE);
+                    } else {
+                        t.setCategory(Category.LCHE);
+                    }
+                    count++;
+                }
+            }
+
+            return transactionList;
+        }
+
+        // TC #4
+        if (testCase.getHchePercentage() == 25 && testCase.getLclePercentage() == 25) {
+
+            for (Transaction t : transactionList) {
+                t.setCategory(null);
+            }
+
+            long size = transactionList.size();
+            long aQuarterOfTheList = Math.round(size * 0.25);
+            long halfOfTheList = aQuarterOfTheList * 2;
+            long threeQuartersOfTheList = aQuarterOfTheList * 3;
+
+            for (long l = 0; l < aQuarterOfTheList; l++) {
+                int m = Math.toIntExact(l);
+                transactionList.get(m).setCategory(Category.HCHE);
+            }
+
+            for (long l = aQuarterOfTheList; l < halfOfTheList; l++) {
+                int m = Math.toIntExact(l);
+                transactionList.get(m).setCategory(Category.HCLE);
+            }
+
+            for (long l = halfOfTheList; l < threeQuartersOfTheList; l++) {
+                int m = Math.toIntExact(l);
+                transactionList.get(m).setCategory(Category.LCHE);
+            }
+
+            for (long l = threeQuartersOfTheList; l < size; l++) {
+                int m = Math.toIntExact(l);
+                transactionList.get(m).setCategory(Category.LCLE);
+            }
+
+            return transactionList;
+        }
+
+        return transactionList;
     }
 
     public List<String> getAllPossibleIds() {
