@@ -103,6 +103,12 @@ public class ResourceCategoryDataStructure {
         }
     }
 
+    public void clearAll() {
+        synchronized (resourceMinHeapMap) {
+            resourceMinHeapMap.clear();
+        }
+    }
+
     public void printHeap(Heap heap) {
         for (int i = 0; i <= heap.size() / 2; i++) {
 

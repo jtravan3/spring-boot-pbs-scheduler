@@ -24,11 +24,13 @@ public class TransactionEventSupplierImpl implements TransactionEventSupplier {
 
     @Override
     public TransactionEvent get() {
-        try {
-            return transactionEventQueue.poll(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            System.err.println("Timeout waiting for queue to be populated");
-            return null;
+        synchronized (transactionEventQueue) {
+            try {
+                return transactionEventQueue.poll(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                System.err.println("Timeout waiting for queue to be populated");
+                return null;
+            }
         }
     }
 
@@ -38,13 +40,18 @@ public class TransactionEventSupplierImpl implements TransactionEventSupplier {
     }
 
     @Override
+    @Async
     public void handleTransactionEvent(TransactionEvent transactionEvent) {
-        transactionEventQueue.add(transactionEvent);
+        synchronized (transactionEventQueue) {
+            transactionEventQueue.add(transactionEvent);
+        }
     }
 
     @Override
     public void clearSupplier() {
-        transactionEventQueue.clear();
+        synchronized (transactionEventQueue) {
+            transactionEventQueue.clear();
+        }
     }
 
 }

@@ -128,6 +128,10 @@ public class ResourceNotificationManager implements ResourceNotificationHandler 
 
     }
 
+    public void deregisterAll() {
+        handlers.clear();
+    }
+
     public void handleResourceNotification(ResourceNotification resourceNotification) {
 
         if (resourceNotification == null) {

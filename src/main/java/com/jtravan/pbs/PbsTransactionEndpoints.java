@@ -25,7 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.util.function.Tuple2;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -119,10 +121,38 @@ public class PbsTransactionEndpoints {
     }
 
     @Transactional
-    @GetMapping(value = "/start/difftrans/so/{testCaseNumber}", produces = MediaType.TEXT_PLAIN_VALUE)
-    public String startDifferentSystemOut(@PathVariable Long testCaseNumber) throws InterruptedException {
+    @GetMapping(value = "/start/difftrans/so/bulk/{testCaseNumber}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String startDifferentSystemOutBulk(@PathVariable Long testCaseNumber) throws InterruptedException, IOException {
 
-        int scheduleCount = 100;
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (int i = 0; i < 4; i++) {
+            stringBuilder
+                    .append("=============================")
+                    .append(System.lineSeparator())
+                    .append("Test Run #").append(i)
+                    .append(System.lineSeparator());
+            metricsAggregator.clear();
+            transactionEventSupplier.clearSupplier();
+            resourceNotificationManager.deregisterAll();
+            resourceCategoryDataStructure_READ.clearAll();
+            resourceCategoryDataStructure_WRITE.clearAll();
+            stringBuilder
+                    .append(startDifferentSystemOut(testCaseNumber))
+                    .append(System.lineSeparator())
+                    .append("=============================")
+                    .append(System.lineSeparator());
+        }
+
+        return stringBuilder.toString();
+
+    }
+
+    @Transactional
+    @GetMapping(value = "/start/difftrans/so/{testCaseNumber}", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String startDifferentSystemOut(@PathVariable Long testCaseNumber) throws InterruptedException, IOException {
+
+        int scheduleCount = 2;
         int i; // loop counter
         metricsAggregator.clear();
         metricsAggregator.setScheduleCount(scheduleCount);
@@ -140,6 +170,7 @@ public class PbsTransactionEndpoints {
         metricsAggregator.setTotalTimeWithoutExecution(executionTime);
 
         transactionList = transactionGenerator.setCategoriesByTestCase(transactionList, testCase);
+        Collections.shuffle(transactionList);
 
         // PBS Specific
         transactionEventSupplier.clearSupplier();
@@ -182,6 +213,7 @@ public class PbsTransactionEndpoints {
 
         printAndEndProcess();
         metricsAggregator.setNlEndTime(new Date());
+        metricsAggregator.writeToCsvFile(testCaseNumber);
 
         return metricsAggregator.toString();
     }

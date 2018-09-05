@@ -1,14 +1,41 @@
 package com.jtravan.pbs.services;
 
+
 import lombok.Data;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
 @Data
 public class MetricsAggregator {
+
+//    .withHeader(
+//                                "# of Schedules",
+//                                        "# of Operations",
+//                                        "Total time w/o execution",
+//                                        "# of ELEVATE actions",
+//                                        "# of DECLINE actions",
+//                                        "# of GRANT actions",
+//                                        "PBS abort actions",
+//                                        "PBS Execution Time",
+//                                        "TS abort actions",
+//                                        "Is deadlocked?",
+//                                        "TS Execution Time",
+//                                        "NL abort actions",
+//                                        "Is consistency lost?",
+//                                        "NL Execution Time")
+
+    private static final String RESEARCH_OUTPUT_FILE_NAME = "/Users/johnravan/Desktop/research-output";
 
     // General values
     private long scheduleCount;
@@ -126,6 +153,22 @@ public class MetricsAggregator {
         toString.append(System.lineSeparator());
         toString.append("%%%%%%%%%%%%%%%%%%%%%%%%%%");
         return toString.toString();
+    }
+
+    public void writeToCsvFile(Long testCaseNumber) throws IOException {
+        try (
+                BufferedWriter writer = Files.newBufferedWriter(Paths.get(RESEARCH_OUTPUT_FILE_NAME
+                        + testCaseNumber + ".csv"), StandardOpenOption.APPEND);
+
+                CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT)
+        ) {
+            csvPrinter.printRecord(scheduleCount, operationCount, totalTimeWithoutExecution,
+                    elevateCount, declineCount, grantCount, pbsAbortCount, getPbsExecutionTime(),
+                    tsAbortCount, isTsDeadLocked, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
+                    getNlExecutionTime(), System.lineSeparator());
+
+            csvPrinter.flush();
+        }
     }
 
     public void clear() {
