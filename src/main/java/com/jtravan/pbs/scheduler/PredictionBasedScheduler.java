@@ -17,6 +17,7 @@ import com.jtravan.pbs.suppliers.TransactionEventSupplier;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import org.springframework.scheduling.annotation.Async;
 
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -108,8 +109,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
             }
 
             if(resourceOperation.isAbortOperation()) {
-                handleAbortOperation(": Execution aborted from within");
-                return false;
+                return handleAbortOperation(": Execution aborted from within");
             }
 
             Action action = predictionBasedSchedulerActionService
@@ -188,9 +188,12 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                                 }
                             }
 
-                            insertIntoCorrectRCDS(resourceOperation);
-                            lockResource(resourceOperation);
-                            resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
+                            if (lockResource(resourceOperation)) {
+                                return handleAbortOperation("Deadlocked. Cancelling and rerunning");
+                            } else {
+                                insertIntoCorrectRCDS(resourceOperation);
+                                resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
+                            }
                         }
 
                         stringBuilder = new StringBuilder();
@@ -215,7 +218,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
                     resourceWaitingOn = resourceOperation.getResource();
 
-                    lockResource(resourceOperation);
+                    if (lockResource(resourceOperation)) {
+                        return handleAbortOperation("Deadlocked. Cancelling and rerunning");
+                    }
 
                     if(resourceOperation.getOperation() == Operation.READ) {
                         resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
@@ -271,7 +276,9 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
                         handleTransactionEvent(stringBuilder.toString());
 
-                        lockResource(resourceOperation);
+                        if (lockResource(resourceOperation)) {
+                            return handleAbortOperation("Deadlocked. Cancelling and rerunning");
+                        }
 
                         if (resourceOperation.getOperation() == Operation.READ) {
                             resourcesWeHaveLockOn_Read.put(resourceOperation.getResource(), 1);
@@ -313,8 +320,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
             }
 
             if(resourceOperation.isAbortOperation()) {
-                handleAbortOperation(": Execution aborted from within");
-                return false;
+                return handleAbortOperation(": Execution aborted from within");
             }
 
             try {
@@ -348,7 +354,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
             if (lockCount != null && lockCount == 1) {
 
-                synchronized (resourceNotificationManager) {
+                //synchronized (resourceNotificationManager) {
                     if (resourceOperation.getOperation() == Operation.READ) {
                         resourcesWeHaveLockOn_Read.remove(resourceOperation.getResource());
                     } else {
@@ -357,7 +363,7 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
                     removeFromCorrectRCDS(resourceOperation);
                     resourceNotificationManager.unlock(resourceOperation.getResource());
-                }
+                //}
 
                 stringBuilder = new StringBuilder();
                 stringBuilder
@@ -403,10 +409,21 @@ public class PredictionBasedScheduler implements TransactionExecutor,
         transactionEventSupplier.handleTransactionEvent(transactionEvent);
     }
 
-    private void lockResource(ResourceOperation resourceOperation) {
+
+    @SuppressWarnings("Duplicates")
+    private boolean lockResource(ResourceOperation resourceOperation) {
+
         StringBuilder stringBuilder;
+        Date startTime = new Date(); //fetch starting time
+        boolean isDeadLocked = false;
+
         synchronized (resourceNotificationManager) {
             while (true) {
+
+                if (isDeadLocked) {
+                    break;
+                }
+
                 try {
                     resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
                     break;
@@ -424,21 +441,39 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
                     while(true) {
                         if(request.isDone()) {
+                            resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
+                            stringBuilder = new StringBuilder();
+                            stringBuilder
+                                    .append(schedulerName)
+                                    .append(": Resource: " )
+                                    .append(resourceOperation.getResource())
+                                    .append(" is released and requesting lock again");
+
+                            handleTransactionEvent(stringBuilder.toString());
+                            isDeadLocked =  false;
+                            break;
+                        }
+
+                        // If locked for 8 seconds then deadlocked
+                        long timeBetween = ChronoUnit.MILLIS.between(startTime.toInstant(), new Date().toInstant());
+                        if (timeBetween >= 8000) {
+                            stringBuilder = new StringBuilder();
+                            stringBuilder
+                                    .append(schedulerName)
+                                    .append(": Deadlocked on Resource: " )
+                                    .append(resourceOperation.getResource());
+
+                            handleTransactionEvent(stringBuilder.toString());
+                            isDeadLocked =  true;
                             break;
                         }
                     }
 
-                    stringBuilder = new StringBuilder();
-                    stringBuilder
-                            .append(schedulerName)
-                            .append(": Resource: " )
-                            .append(resourceOperation.getResource())
-                            .append(" is released and requesting lock again");
-
-                    handleTransactionEvent(stringBuilder.toString());
                 }
             }
         }
+
+        return isDeadLocked;
     }
 
     @SuppressWarnings("Duplicates")
@@ -520,12 +555,29 @@ public class PredictionBasedScheduler implements TransactionExecutor,
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder
                         .append(schedulerName)
-                        .append(": Aborted. Doing nothing else" );
+                        .append(": Aborted. Creating new scheduler to re-run" );
+
+//                long abortCount = metricsAggregator.getPbsAbortCount();
+//                abortCount++;
+//                metricsAggregator.setPbsAbortCount(abortCount);
 
                 handleTransactionEvent(stringBuilder.toString());
 
-                //TODO: Figure out how to rerun with new Spring boot configuration
+                Thread.sleep(2000);
 
+                long rerunCount = metricsAggregator.getPbsRerunCount();
+                rerunCount++;
+                metricsAggregator.setPbsRerunCount(rerunCount);
+
+                // Create new scheduler
+                PredictionBasedScheduler predictionBasedScheduler =
+                        new PredictionBasedScheduler(resourceNotificationManager,
+                                predictionBasedSchedulerActionService, resourceCategoryDataStructure_READ,
+                                resourceCategoryDataStructure_WRITE, transactionEventSupplier, metricsAggregator);
+
+                predictionBasedScheduler.setTransaction(transaction.createCopy());
+                predictionBasedScheduler.setSchedulerName(schedulerName + "RERUN");
+                predictionBasedScheduler.executeTransaction();
             }
         } catch (InterruptedException ex) { //
             StringBuilder stringBuilder = new StringBuilder();
@@ -535,24 +587,29 @@ public class PredictionBasedScheduler implements TransactionExecutor,
 
             handleTransactionEvent(stringBuilder.toString());
 
-            synchronized (resourceNotificationManager) {
+//            long abortCount = metricsAggregator.getPbsAbortCount();
+//            abortCount++;
+//            metricsAggregator.setPbsAbortCount(abortCount);
+
+            //synchronized (resourceNotificationManager) {
                 for(ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
                     resourceNotificationManager.unlock(resourceOperation.getResource());
                 }
-            }
+            //}
         }
     }
 
     private boolean handleAbortOperation(String reason) {
 
-        synchronized (resourceNotificationManager) {
+        //synchronized (resourceNotificationManager) {
             for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
                 resourceNotificationManager.unlock(resourceOperation.getResource());
             }
-        }
+        //}
 
         long abortCount = metricsAggregator.getPbsAbortCount();
-        metricsAggregator.setPbsAbortCount(++abortCount);
+        abortCount++;
+        metricsAggregator.setPbsAbortCount(abortCount);
 
         resourcesWeHaveLockOn_Write.clear();
         resourcesWeHaveLockOn_Read.clear();

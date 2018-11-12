@@ -38,7 +38,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
                         // Means there is currently no lock granted for the resource. Free for all...
                         long grantCount = metricsAggregator.getGrantCount();
-                        metricsAggregator.setGrantCount(++grantCount);
+                        grantCount++;
+                        metricsAggregator.setGrantCount(grantCount);
                         return Action.GRANT;
 
                     } else {
@@ -54,7 +55,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                             rcdsRead.clearHeapForResource(resource);
                             rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                             long elevateCount = metricsAggregator.getElevateCount();
-                            metricsAggregator.setElevateCount(++elevateCount);
+                            elevateCount++;
+                            metricsAggregator.setElevateCount(elevateCount);
                             return Action.ELEVATE;
 
                         } else {
@@ -62,7 +64,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                             // Means a write operation needs to operate however, the lock that is currently granted has a
                             // higher priority and we must wait
                             long declineCount = metricsAggregator.getDeclineCount();
-                            metricsAggregator.setDeclineCount(++declineCount);
+                            declineCount++;
+                            metricsAggregator.setDeclineCount(declineCount);
                             return Action.DECLINE;
 
                         }
@@ -78,7 +81,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
 
                         // There is a write lock granted but the requesting lock is not high enough to elevate it. We must wait
                         long declineCount = metricsAggregator.getDeclineCount();
-                        metricsAggregator.setDeclineCount(++declineCount);
+                        declineCount++;
+                        metricsAggregator.setDeclineCount(declineCount);
                         return Action.DECLINE;
 
                     } else {
@@ -92,7 +96,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                             rcdsWrite.clearHeapForResource(resource);
                             rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                             long elevateCount = metricsAggregator.getElevateCount();
-                            metricsAggregator.setElevateCount(++elevateCount);
+                            elevateCount++;
+                            metricsAggregator.setElevateCount(elevateCount);
                             return Action.ELEVATE;
 
                         } else {
@@ -114,7 +119,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                                 rcdsWrite.clearHeapForResource(resource);
                                 rcdsWrite.insertResourceOperationForResource(resource, resourceOperation);
                                 long elevateCount = metricsAggregator.getElevateCount();
-                                metricsAggregator.setElevateCount(++elevateCount);
+                                elevateCount++;
+                                metricsAggregator.setElevateCount(elevateCount);
                                 return Action.ELEVATE;
 
                             } else {
@@ -122,7 +128,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                                 // The granted write lock has a lower priority than the requesting one BUT the
                                 // read lock granted has a higher priority so we must wait
                                 long declineCount = metricsAggregator.getDeclineCount();
-                                metricsAggregator.setDeclineCount(++declineCount);
+                                declineCount++;
+                                metricsAggregator.setDeclineCount(declineCount);
                                 return Action.DECLINE;
 
                             }
@@ -140,7 +147,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                     // There is no write locks granted so we are good to go. There can be shared
                     // read locks granted
                     long grantCount = metricsAggregator.getGrantCount();
-                    metricsAggregator.setGrantCount(++grantCount);
+                    grantCount++;
+                    metricsAggregator.setGrantCount(grantCount);
                     return Action.GRANT;
 
                 } else {
@@ -152,7 +160,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                         // There is a write lock granted AND it has a higher priority than the requesting lock
                         // so we must wait
                         long declineCount = metricsAggregator.getDeclineCount();
-                        metricsAggregator.setDeclineCount(++declineCount);
+                        declineCount++;
+                        metricsAggregator.setDeclineCount(declineCount);
                         return Action.DECLINE;
 
                     } else {
@@ -164,7 +173,8 @@ public class PredictionBasedSchedulerActionServiceImpl implements PredictionBase
                         rcdsWrite.clearHeapForResource(resource);
                         rcdsRead.insertResourceOperationForResource(resource, resourceOperation);
                         long elevateCount = metricsAggregator.getElevateCount();
-                        metricsAggregator.setElevateCount(++elevateCount);
+                        elevateCount++;
+                        metricsAggregator.setElevateCount(elevateCount);
                         return Action.ELEVATE;
 
                     }

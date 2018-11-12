@@ -1,7 +1,5 @@
 package com.jtravan.pbs.services;
 
-
-import lombok.Data;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.stereotype.Component;
@@ -9,14 +7,12 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
-@Data
 public class MetricsAggregator {
 
 //    .withHeader(
@@ -50,12 +46,13 @@ public class MetricsAggregator {
     private long grantCount;
     private long pbsAbortCount;
     private long pbsExecutionTime;
+    private long pbsRerunCount;
 
     // Traditional Values
     private Date tsStartTime;
     private Date tsEndTime;
     private long tsAbortCount;
-    private boolean isTsDeadLocked;
+    private long tsDeadLockCount;
     private long tsExecutionTime;
 
     // No-Locking Values
@@ -65,10 +62,166 @@ public class MetricsAggregator {
     private boolean isNlConsistencyLost;
     private long nlExecutionTime;
 
+    public synchronized long getScheduleCount() {
+        return scheduleCount;
+    }
+
+    public synchronized void setScheduleCount(long scheduleCount) {
+        this.scheduleCount = scheduleCount;
+    }
+
+    public synchronized long getOperationCount() {
+        return operationCount;
+    }
+
+    public synchronized void setOperationCount(long operationCount) {
+        this.operationCount = operationCount;
+    }
+
+    public synchronized long getTotalTimeWithoutExecution() {
+        return totalTimeWithoutExecution;
+    }
+
+    public synchronized void setTotalTimeWithoutExecution(long totalTimeWithoutExecution) {
+        this.totalTimeWithoutExecution = totalTimeWithoutExecution;
+    }
+
+    public synchronized Date getPbsStartTime() {
+        return pbsStartTime;
+    }
+
+    public synchronized void setPbsStartTime(Date pbsStartTime) {
+        this.pbsStartTime = pbsStartTime;
+    }
+
+    public synchronized Date getPbsEndTime() {
+        return pbsEndTime;
+    }
+
+    public synchronized void setPbsEndTime(Date pbsEndTime) {
+        this.pbsEndTime = pbsEndTime;
+    }
+
+    public synchronized long getElevateCount() {
+        return elevateCount;
+    }
+
+    public synchronized void setElevateCount(long elevateCount) {
+        this.elevateCount = elevateCount;
+    }
+
+    public synchronized long getDeclineCount() {
+        return declineCount;
+    }
+
+    public synchronized void setDeclineCount(long declineCount) {
+        this.declineCount = declineCount;
+    }
+
+    public synchronized long getGrantCount() {
+        return grantCount;
+    }
+
+    public synchronized void setGrantCount(long grantCount) {
+        this.grantCount = grantCount;
+    }
+
+    public synchronized long getPbsAbortCount() {
+        return pbsAbortCount;
+    }
+
+    public synchronized void setPbsAbortCount(long pbsAbortCount) {
+        this.pbsAbortCount = pbsAbortCount;
+    }
+
+    public synchronized void setPbsExecutionTime(long pbsExecutionTime) {
+        this.pbsExecutionTime = pbsExecutionTime;
+    }
+
+    public synchronized long getPbsRerunCount() {
+        return pbsRerunCount;
+    }
+
+    public synchronized void setPbsRerunCount(long pbsRerunCount) {
+        this.pbsRerunCount = pbsRerunCount;
+    }
+
+    public synchronized Date getTsStartTime() {
+        return tsStartTime;
+    }
+
+    public synchronized void setTsStartTime(Date tsStartTime) {
+        this.tsStartTime = tsStartTime;
+    }
+
+    public synchronized Date getTsEndTime() {
+        return tsEndTime;
+    }
+
+    public synchronized void setTsEndTime(Date tsEndTime) {
+        this.tsEndTime = tsEndTime;
+    }
+
+    public synchronized long getTsAbortCount() {
+        return tsAbortCount;
+    }
+
+    public synchronized void setTsAbortCount(long tsAbortCount) {
+        this.tsAbortCount = tsAbortCount;
+    }
+
+    public synchronized long getTsDeadLockCount() {
+        return tsDeadLockCount;
+    }
+
+    public synchronized void setTsDeadLockCount(long tsDeadLockCount) {
+        this.tsDeadLockCount = tsDeadLockCount;
+    }
+
+    public synchronized void setTsExecutionTime(long tsExecutionTime) {
+        this.tsExecutionTime = tsExecutionTime;
+    }
+
+    public synchronized Date getNlStartTime() {
+        return nlStartTime;
+    }
+
+    public synchronized void setNlStartTime(Date nlStartTime) {
+        this.nlStartTime = nlStartTime;
+    }
+
+    public synchronized Date getNlEndTime() {
+        return nlEndTime;
+    }
+
+    public synchronized void setNlEndTime(Date nlEndTime) {
+        this.nlEndTime = nlEndTime;
+    }
+
+    public synchronized long getNlAbortCount() {
+        return nlAbortCount;
+    }
+
+    public synchronized void setNlAbortCount(long nlAbortCount) {
+        this.nlAbortCount = nlAbortCount;
+    }
+
+    public synchronized boolean isNlConsistencyLost() {
+        return isNlConsistencyLost;
+    }
+
+    public synchronized void setNlConsistencyLost(boolean nlConsistencyLost) {
+        isNlConsistencyLost = nlConsistencyLost;
+    }
+
+    public synchronized void setNlExecutionTime(long nlExecutionTime) {
+        this.nlExecutionTime = nlExecutionTime;
+    }
 
     private long getPbsExecutionTime() {
         long milliSeconds = ChronoUnit.MILLIS.between(pbsStartTime.toInstant(), pbsEndTime.toInstant());
         pbsExecutionTime = milliSeconds - 10000; // offset 10 second wait
+        //pbsExecutionTime = pbsExecutionTime - (pbsRerunCount * 2000); // remove time waiting to execute again
         return pbsExecutionTime;
     }
 
@@ -118,6 +271,9 @@ public class MetricsAggregator {
         toString.append("Number of abort actions: ");
         toString.append(pbsAbortCount);
         toString.append(System.lineSeparator());
+        toString.append("Number of reruns: ");
+        toString.append(pbsRerunCount);
+        toString.append(System.lineSeparator());
         toString.append("Execution time: ");
         toString.append(getPbsExecutionTime());
         toString.append(System.lineSeparator());
@@ -130,8 +286,8 @@ public class MetricsAggregator {
         toString.append("Number of abort actions: ");
         toString.append(tsAbortCount);
         toString.append(System.lineSeparator());
-        toString.append("Is it deadlocked?: ");
-        toString.append(isTsDeadLocked);
+        toString.append("TS Deadlock count: ");
+        toString.append(tsDeadLockCount);
         toString.append(System.lineSeparator());
         toString.append("Execution time: ");
         toString.append(getTsExecutionTime());
@@ -164,8 +320,8 @@ public class MetricsAggregator {
         ) {
             csvPrinter.printRecord(scheduleCount, operationCount, totalTimeWithoutExecution,
                     elevateCount, declineCount, grantCount, pbsAbortCount, getPbsExecutionTime(),
-                    tsAbortCount, isTsDeadLocked, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
-                    getNlExecutionTime(), System.lineSeparator());
+                    tsAbortCount, tsDeadLockCount, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
+                    getNlExecutionTime(), pbsRerunCount, System.lineSeparator());
 
             csvPrinter.flush();
         }
@@ -180,12 +336,13 @@ public class MetricsAggregator {
         this.declineCount = 0;
         this.grantCount = 0;
         this.pbsAbortCount = 0;
+        this.pbsRerunCount = 0;
         this.totalTimeWithoutExecution = 0;
 
         this.tsStartTime = null;
         this.tsEndTime = null;
         this.tsAbortCount = 0;
-        this.isTsDeadLocked = false;
+        this.tsDeadLockCount = 0;
         this.tsExecutionTime = 0;
 
         this.nlStartTime = null;

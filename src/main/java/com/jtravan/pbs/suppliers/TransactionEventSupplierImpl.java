@@ -40,7 +40,6 @@ public class TransactionEventSupplierImpl implements TransactionEventSupplier {
     }
 
     @Override
-    @Async
     public void handleTransactionEvent(TransactionEvent transactionEvent) {
         synchronized (transactionEventQueue) {
             transactionEventQueue.add(transactionEvent);

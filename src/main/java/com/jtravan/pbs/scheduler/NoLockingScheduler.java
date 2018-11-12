@@ -95,9 +95,9 @@ public class NoLockingScheduler implements TransactionExecutor,
             }
 
             if (!resourceOperation.getResource().isLocked().get() && resourceOperation.getOperation() == Operation.WRITE) {
-                synchronized (resourceNotificationManager) {
+                //synchronized (resourceNotificationManager) {
                     resourceNotificationManager.lock(resourceOperation.getResource(), resourceOperation.getOperation());
-                }
+                //}
             }
 
             try {
@@ -113,9 +113,9 @@ public class NoLockingScheduler implements TransactionExecutor,
                 Thread.sleep(resourceOperation.getExecutionTime());
 
                 if (resourceOperation.getOperation() == Operation.WRITE) {
-                    synchronized (resourceNotificationManager) {
+                    //synchronized (resourceNotificationManager) {
                         resourceNotificationManager.unlock(resourceOperation.getResource());
-                    }
+                    //}
                 }
 
             } catch (InterruptedException e) {
@@ -142,14 +142,15 @@ public class NoLockingScheduler implements TransactionExecutor,
 
     private boolean handleAbortOperation(String reason) {
 
-        synchronized (resourceNotificationManager) {
+        //synchronized (resourceNotificationManager) {
             for (ResourceOperation resourceOperation : transaction.getResourceOperationList()) {
                 resourceNotificationManager.unlock(resourceOperation.getResource());
             }
-        }
+        //}
 
         long abortCount = metricsAggregator.getNlAbortCount();
-        metricsAggregator.setNlAbortCount(++abortCount);
+        abortCount++;
+        metricsAggregator.setNlAbortCount(abortCount);
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder
