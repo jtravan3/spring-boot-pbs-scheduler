@@ -51,12 +51,13 @@ in the file `MetricsAggregator` to the location that you want saved. Right now i
 to `/Users/jravan/Desktop/research-output`. This will save 7 files to the Desktop under the names of each
 test case (`research-output1.csv`, `research-output2.csv`, etc.)
 
+## Execution
 
-5.) If all tests succeed and the project can be built successfully, navigate to the Spring Boot
+1.) If all tests succeed and the project can be built successfully, navigate to the Spring Boot
 Application with the name `PredictionBasedPrototypeApplication.java`. If you're using IntelliJ,
 click on the file and click `Run`.
 
-6.) With the application running navigate to a web browser and access the 
+2.) With the application running navigate to a web browser and access the 
 URL `http://localhost:8082/rest/pbs/start/difftrans/so/{testCaseNumber}` where `testCaseNumber`
 is a number between 1 and 7. See the test cases mapped out below. The numbers represent the percentages
 of the category of transactions in the batch tested.
@@ -72,5 +73,8 @@ of the category of transactions in the batch tested.
 |      7      | 0    |  0   |  0   |  100 |      
 
 
-7.) Success! Now you can start generating results. If you have any questions, please contact me at
+3.) To run a loop of tests in order to continually produce results, use the URL `http://localhost:8082/rest/pbs/start/difftrans/so/all`. This 
+will continually execute a loop of all test cases while trapping any errors. To stop the loop use `http://localhost:8082/rest/pbs/endLoop`
+
+4.) Success! Now you can start generating results. If you have any questions, please contact me at
 ravanj1@citadel.edu or fill out an issue through this repository.

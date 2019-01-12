@@ -37,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+@SuppressWarnings("ALL")
 @RestController
 @RequestMapping("/rest/pbs")
 public class PbsTransactionEndpoints {
@@ -148,6 +149,114 @@ public class PbsTransactionEndpoints {
 
         return stringBuilder.toString();
 
+    }
+
+    boolean isLoopEnded = true;
+
+    @Transactional
+    @GetMapping(value = "/endLoop", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String endLoop() {
+        isLoopEnded = true;
+        return "I ended the Loop";
+    }
+
+    @Transactional
+    @GetMapping(value = "/start/difftrans/so/all", produces = MediaType.TEXT_PLAIN_VALUE)
+    public void startDifferentSystemOutLoop() {
+        long testCaseNumber = 0;
+        while(!isLoopEnded) {
+            testCaseNumber++;
+            testCaseNumber = testCaseNumber % 7;
+            try {
+                int i; // loop counter
+                metricsAggregator.clear();
+                resourceNotificationManager.deregisterAll();
+                resourceCategoryDataStructure_READ.clearAll();
+                resourceCategoryDataStructure_WRITE.clearAll();
+                metricsAggregator.setScheduleCount(NUM_OF_SCHEDULES);
+                metricsAggregator.setOperationCount(NUM_OF_OPERATIONS);
+
+                TestCase testCase = TestCaseFactory.getTestCaseByTestCaseNumber(testCaseNumber);
+
+                long executionTime = 0;
+                List<Transaction> transactionList = new LinkedList<>();
+                for(int count = 0; count < NUM_OF_SCHEDULES; count++) {
+                    Transaction transaction = transactionGenerator.generateRandomTransaction(NUM_OF_OPERATIONS);
+                    executionTime += transaction.getExecutionTime();
+                    transactionList.add(transaction);
+                }
+                metricsAggregator.setTotalTimeWithoutExecution(executionTime);
+
+                transactionList = transactionGenerator.setCategoriesByTestCase(transactionList, testCase);
+                Collections.shuffle(transactionList);
+
+                // PBS Specific
+                transactionEventSupplier.clearSupplier();
+                metricsAggregator.setPbsStartTime(new Date());
+                i = 0;
+                ExecutorService pbsExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                for(Transaction transaction : transactionList) {
+                    PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
+                    i++;
+//            (new Thread(pbs)).start();
+                    pbsExecutorService.submit(pbs);
+                    Thread.sleep(200);
+                }
+
+                printAndEndProcess();
+                try {
+                    pbsExecutorService.shutdown();
+                    pbsExecutorService.awaitTermination(10, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {}
+
+                metricsAggregator.setPbsEndTime(new Date());
+
+                // Traditional Specific
+                transactionEventSupplier.clearSupplier();
+                metricsAggregator.setTsStartTime(new Date());
+                i = 0;
+                ExecutorService tsExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                for(Transaction transaction : transactionList) {
+                    TraditionalScheduler ts = createTraditionalScheduler(transaction.createCopy(), i);
+                    i++;
+//            (new Thread(ts)).start();
+                    tsExecutorService.submit(ts);
+                    Thread.sleep(200);
+                }
+
+                printAndEndProcess();
+                try {
+                    tsExecutorService.shutdown();
+                    tsExecutorService.awaitTermination(10, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {}
+
+                metricsAggregator.setTsEndTime(new Date());
+
+                // No-locking Specific
+                transactionEventSupplier.clearSupplier();
+                metricsAggregator.setNlStartTime(new Date());
+                i = 0;
+                ExecutorService nlExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                for(Transaction transaction : transactionList) {
+                    NoLockingScheduler nl = createNoLockingScheduler(transaction.createCopy(), i);
+                    i++;
+//            (new Thread(nl)).start();
+                    nlExecutorService.submit(nl);
+                    Thread.sleep(200);
+                }
+
+                printAndEndProcess();
+                try {
+                    nlExecutorService.shutdown();
+                    nlExecutorService.awaitTermination(10, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {}
+
+                metricsAggregator.setNlEndTime(new Date());
+                metricsAggregator.writeToCsvFile(testCaseNumber);
+            } catch(Exception ex) {
+                continue;
+            }
+        }
     }
 
     @Transactional

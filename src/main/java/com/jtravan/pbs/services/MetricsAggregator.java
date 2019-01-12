@@ -228,6 +228,7 @@ public class MetricsAggregator {
     private long getTsExecutionTime() {
         long milliSeconds = ChronoUnit.MILLIS.between(tsStartTime.toInstant(), tsEndTime.toInstant());
         tsExecutionTime = milliSeconds - 10000; // offset 10 second wait
+        tsExecutionTime+= tsAbortCount * tsExecutionTime; // To account for compensation transactions
         return tsExecutionTime;
     }
 
