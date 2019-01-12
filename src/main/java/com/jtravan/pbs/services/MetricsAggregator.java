@@ -31,7 +31,7 @@ public class MetricsAggregator {
 //                                        "Is consistency lost?",
 //                                        "NL Execution Time")
 
-    private static final String RESEARCH_OUTPUT_FILE_NAME = "/Users/johnravan/Desktop/research-output";
+    private static final String RESEARCH_OUTPUT_FILE_NAME = "/Users/jravan/Desktop/research-output";
 
     // General values
     private long scheduleCount;
