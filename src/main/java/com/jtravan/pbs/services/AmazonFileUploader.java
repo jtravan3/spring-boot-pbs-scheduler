@@ -8,6 +8,8 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.Upload;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,13 +27,26 @@ public class AmazonFileUploader {
     @Value("${s3.access.secret}")
     private String accessSecret;
 
-    public void uploadFile(File file) {
-        System.setProperty(SDKGlobalConfiguration.ENABLE_S3_SIGV4_SYSTEM_PROPERTY, "true");
-        AWSCredentials credentials = new BasicAWSCredentials(accessKeyId, accessSecret);
+    private boolean isInitialized = false;
 
-        AmazonS3 s3client = new AmazonS3Client(credentials);
-        s3client.setRegion(Region.getRegion(Regions.US_EAST_1));
+    private TransferManager transferManager;
 
-        s3client.putObject(new PutObjectRequest(s3BucketName, file.getName(), file));
+    private void initializeTransferManager() {
+        if (!isInitialized) {
+            AWSCredentials credentials = new BasicAWSCredentials(accessKeyId, accessSecret);
+            transferManager = new TransferManager(credentials);
+            isInitialized = true;
+        }
+    }
+
+    public void uploadFile(File file) throws InterruptedException {
+        initializeTransferManager();
+        Upload myUpload = transferManager.upload(s3BucketName, file.getName(), file);
+        myUpload.waitForCompletion();
+    }
+
+    public void shutdownTransferManager() {
+        isInitialized = false;
+        transferManager.shutdownNow();
     }
 }

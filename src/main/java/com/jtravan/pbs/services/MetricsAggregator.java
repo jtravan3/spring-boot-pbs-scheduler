@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.sql.SQLOutput;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -439,13 +440,79 @@ public class MetricsAggregator {
         @Override
         public void run(){
             if (useAmazonS3 && !isTesting) {
-                amazonFileUploader.uploadFile(output1);
-                amazonFileUploader.uploadFile(output2);
-                amazonFileUploader.uploadFile(output3);
-                amazonFileUploader.uploadFile(output4);
-                amazonFileUploader.uploadFile(output5);
-                amazonFileUploader.uploadFile(output6);
-                amazonFileUploader.uploadFile(output7);
+                try {
+                    amazonFileUploader.uploadFile(output1);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 1");
+                        amazonFileUploader.uploadFile(output1);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 1");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output2);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 2");
+                        amazonFileUploader.uploadFile(output2);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 2");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output3);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 3");
+                        amazonFileUploader.uploadFile(output3);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 3");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output4);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 4");
+                        amazonFileUploader.uploadFile(output4);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 4");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output5);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 5");
+                        amazonFileUploader.uploadFile(output5);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 5");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output6);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 6");
+                        amazonFileUploader.uploadFile(output6);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 6");
+                    }
+                }
+                try {
+                    amazonFileUploader.uploadFile(output7);
+                } catch (InterruptedException e) {
+                    try {
+                        System.out.println("Retrying file 7");
+                        amazonFileUploader.uploadFile(output7);
+                    } catch (InterruptedException e1) {
+                        System.out.println("Giving up on file 7");
+                    }
+                }
+
+                //shutdown
+                amazonFileUploader.shutdownTransferManager();
             }
         }
     }
