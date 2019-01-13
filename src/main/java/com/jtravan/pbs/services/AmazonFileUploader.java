@@ -41,7 +41,13 @@ public class AmazonFileUploader {
 
     public void uploadFile(File file) throws InterruptedException {
         initializeTransferManager();
-        Upload myUpload = transferManager.upload(s3BucketName, file.getName(), file);
+        String name;
+        if (file.getName().startsWith("/") || file.getName().startsWith("\\")) {
+            name = file.getName().substring(1);
+        } else {
+            name = file.getName();
+        }
+        Upload myUpload = transferManager.upload(s3BucketName, name, file);
         myUpload.waitForCompletion();
     }
 
