@@ -56,8 +56,8 @@ to execute longer tests.
 
 ## Docker Hub
 
-I have a personal Docker Hub repository with the latest image. You can pull this image down and run it directly.
-For access, email me directly at ravanj1@citadel.edu.
+I have a personal Docker Hub repository (https://cloud.docker.com/repository/docker/jtravan3/spring-boot-pbs-scheduler) with the latest image. 
+You can pull this image down and run it directly. For access, email me directly at ravanj1@citadel.edu.
 
 Once you have access, simply run the command:
 
