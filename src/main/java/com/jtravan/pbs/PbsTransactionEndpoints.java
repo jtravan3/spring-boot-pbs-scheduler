@@ -162,11 +162,13 @@ public class PbsTransactionEndpoints {
 
     @Transactional
     @GetMapping(value = "/start/difftrans/so/all", produces = MediaType.TEXT_PLAIN_VALUE)
-    public void startDifferentSystemOutLoop() {
+    public String startDifferentSystemOutLoop() {
         long testCaseNumber = 0;
+        isLoopEnded = false;
         while(!isLoopEnded) {
             testCaseNumber++;
             testCaseNumber = testCaseNumber % 7;
+            testCaseNumber = (testCaseNumber == 0 ? 7 : testCaseNumber);
             try {
                 int i; // loop counter
                 metricsAggregator.clear();
@@ -257,6 +259,8 @@ public class PbsTransactionEndpoints {
                 continue;
             }
         }
+
+        return "Process completed";
     }
 
     @Transactional

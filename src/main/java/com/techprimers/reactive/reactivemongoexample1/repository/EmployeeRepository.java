@@ -1,7 +1,7 @@
 package com.techprimers.reactive.reactivemongoexample1.repository;
 
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
-import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface EmployeeRepository extends ReactiveMongoRepository<Employee, String> {
+public interface EmployeeRepository extends JpaRepository<Employee, String> {
 }

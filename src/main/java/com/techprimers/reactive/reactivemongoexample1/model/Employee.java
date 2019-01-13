@@ -1,12 +1,11 @@
 package com.techprimers.reactive.reactivemongoexample1.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Document
+@Entity
 public class Employee {
 
     @Id

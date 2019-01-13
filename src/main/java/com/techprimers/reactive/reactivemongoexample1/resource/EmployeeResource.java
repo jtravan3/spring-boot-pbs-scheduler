@@ -31,43 +31,38 @@ public class EmployeeResource {
     }
 
     @GetMapping("/all")
-    public Flux<Employee> getAll() {
+    public List<Employee> getAll() {
         return employeeRepository
                 .findAll();
     }
 
     @GetMapping("/{id}")
     public Mono<Employee> getId(@PathVariable("id") final String empId) {
-        return employeeRepository.findById(empId);
+        return Mono.just(employeeRepository.findById(empId).get());
     }
 
 
     @GetMapping(value = "/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<EmployeeEvent> getEvents(@PathVariable("id") final String empId) {
-        return employeeRepository.findById(empId)
-                .flatMapMany(employee -> {
+        Employee employee = employeeRepository.findById(empId).get();
+        Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
 
-                    Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
-
-                    Flux<EmployeeEvent> employeeEventFlux =
-                            Flux.fromStream(
-                                    Stream.generate(() -> new EmployeeEvent(employee,
-                                            new Date()))
-                            );
+        Flux<EmployeeEvent> employeeEventFlux =
+                Flux.fromStream(
+                        Stream.generate(() -> new EmployeeEvent(employee,
+                                new Date()))
+                );
 
 
-                    return Flux.zip(interval, employeeEventFlux)
-                            .map(Tuple2::getT2);
-
-                });
-
+        return Flux.zip(interval, employeeEventFlux)
+                .map(Tuple2::getT2);
     }
 
     @GetMapping(value = "/all/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<EmployeeEvent> getAllEvents() {
         Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
 
-        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id")).toIterable();
+        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id"));
 
         LinkedList<Employee> employeeList = new LinkedList<>();
         for (Employee employee : employeeIterable) {
@@ -90,7 +85,7 @@ public class EmployeeResource {
     public Flux<EmployeeEvent> getAllEvents2() {
         Flux<Long> interval = Flux.interval(Duration.ofSeconds(2));
 
-        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id")).toIterable();
+        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id"));
         List<EmployeeEvent> employeeEventIterable = new LinkedList<>();
 
         for (Employee employee : employeeIterable) {

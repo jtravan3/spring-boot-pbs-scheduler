@@ -2,34 +2,81 @@ package com.jtravan.pbs.services;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
 public class MetricsAggregator {
 
-//    .withHeader(
-//                                "# of Schedules",
-//                                        "# of Operations",
-//                                        "Total time w/o execution",
-//                                        "# of ELEVATE actions",
-//                                        "# of DECLINE actions",
-//                                        "# of GRANT actions",
-//                                        "PBS abort actions",
-//                                        "PBS Execution Time",
-//                                        "TS abort actions",
-//                                        "Is deadlocked?",
-//                                        "TS Execution Time",
-//                                        "NL abort actions",
-//                                        "Is consistency lost?",
-//                                        "NL Execution Time")
+    @Value("${s3.enabled}")
+    private Boolean useAmazonS3;
+
+    private static File output1;
+    private static File output2;
+    private static File output3;
+    private static File output4;
+    private static File output5;
+    private static File output6;
+    private static File output7;
+
+    private final AmazonFileUploader amazonFileUploader;
+
+    @Autowired
+    public MetricsAggregator(AmazonFileUploader amazonFileUploader) throws IOException {
+        this.amazonFileUploader = amazonFileUploader;
+        Runtime.getRuntime().addShutdownHook(new FileUploadShutdownHook());
+        initializeFiles();
+    }
+
+    private void initializeFiles() throws IOException {
+        Instant time = Instant.now();
+        output1  = File.createTempFile("output1-" + time.toString(), ".csv");
+        output2  = File.createTempFile("output2-" + time.toString(), ".csv");
+        output3  = File.createTempFile("output3-" + time.toString(), ".csv");
+        output4  = File.createTempFile("output4-" + time.toString(), ".csv");
+        output5  = File.createTempFile("output5-" + time.toString(), ".csv");
+        output6  = File.createTempFile("output6-" + time.toString(), ".csv");
+        output7  = File.createTempFile("output7-" + time.toString(), ".csv");
+
+        output1.deleteOnExit();
+        output2.deleteOnExit();
+        output3.deleteOnExit();
+        output4.deleteOnExit();
+        output5.deleteOnExit();
+        output6.deleteOnExit();
+        output7.deleteOnExit();
+    }
+
+    private File getFileByTestCaseNumber(Long testCaseNumber) {
+        if (testCaseNumber == 1) {
+            return output1;
+        } else if (testCaseNumber == 2) {
+            return output2;
+        } else if (testCaseNumber == 3) {
+            return output3;
+        } else if (testCaseNumber == 4) {
+            return output4;
+        } else if (testCaseNumber == 5) {
+            return output5;
+        } else if (testCaseNumber == 6) {
+            return output6;
+        } else if (testCaseNumber == 7) {
+            return output7;
+        } else {
+            return null;
+        }
+    }
 
     private static final String RESEARCH_OUTPUT_FILE_NAME = "/Users/jravan/Desktop/research-output";
 
@@ -313,18 +360,50 @@ public class MetricsAggregator {
     }
 
     public void writeToCsvFile(Long testCaseNumber) throws IOException {
-        try (
-                BufferedWriter writer = Files.newBufferedWriter(Paths.get(RESEARCH_OUTPUT_FILE_NAME
-                        + testCaseNumber + ".csv"), StandardOpenOption.APPEND);
+        if(useAmazonS3) {
+            File file = getFileByTestCaseNumber(testCaseNumber);
+            try (
+                    BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardOpenOption.APPEND);
+                    CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT
+//                            .withHeader(
+//                            "# of Schedules",
+//                            "# of Operations",
+//                            "Total time w/o execution",
+//                            "# of ELEVATE actions",
+//                            "# of DECLINE actions",
+//                            "# of GRANT actions",
+//                            "PBS abort actions",
+//                            "PBS Execution Time",
+//                            "TS abort actions",
+//                            "Is deadlocked?",
+//                            "TS Execution Time",
+//                            "NL abort actions",
+//                            "Is consistency lost?",
+//                            "NL Execution Time",
+//                            "PBS Rerun Count")
+                    )
+            ) {
+                csvPrinter.printRecord(scheduleCount, operationCount, totalTimeWithoutExecution,
+                        elevateCount, declineCount, grantCount, pbsAbortCount, getPbsExecutionTime(),
+                        tsAbortCount, tsDeadLockCount, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
+                        getNlExecutionTime(), pbsRerunCount, System.lineSeparator());
 
-                CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT)
-        ) {
-            csvPrinter.printRecord(scheduleCount, operationCount, totalTimeWithoutExecution,
-                    elevateCount, declineCount, grantCount, pbsAbortCount, getPbsExecutionTime(),
-                    tsAbortCount, tsDeadLockCount, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
-                    getNlExecutionTime(), pbsRerunCount, System.lineSeparator());
+                csvPrinter.flush();
+            }
+        } else {
+            try (
+                    BufferedWriter writer = Files.newBufferedWriter(Paths.get(RESEARCH_OUTPUT_FILE_NAME
+                            + testCaseNumber + ".csv"), StandardOpenOption.APPEND);
 
-            csvPrinter.flush();
+                    CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT)
+            ) {
+                csvPrinter.printRecord(scheduleCount, operationCount, totalTimeWithoutExecution,
+                        elevateCount, declineCount, grantCount, pbsAbortCount, getPbsExecutionTime(),
+                        tsAbortCount, tsDeadLockCount, getTsExecutionTime(), nlAbortCount, isNlConsistencyLost,
+                        getNlExecutionTime(), pbsRerunCount, System.lineSeparator());
+
+                csvPrinter.flush();
+            }
         }
     }
 
@@ -351,5 +430,23 @@ public class MetricsAggregator {
         this.nlAbortCount = 0;
         this.isNlConsistencyLost = false;
         this.nlExecutionTime = 0;
+    }
+
+    @Value("${isTesting:false}")
+    private Boolean isTesting;
+
+    public class FileUploadShutdownHook extends Thread {
+        @Override
+        public void run(){
+            if (useAmazonS3 && !isTesting) {
+                amazonFileUploader.uploadFile(output1);
+                amazonFileUploader.uploadFile(output2);
+                amazonFileUploader.uploadFile(output3);
+                amazonFileUploader.uploadFile(output4);
+                amazonFileUploader.uploadFile(output5);
+                amazonFileUploader.uploadFile(output6);
+                amazonFileUploader.uploadFile(output7);
+            }
+        }
     }
 }

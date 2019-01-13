@@ -197,7 +197,7 @@ public class TransactionGenerator {
 
     public List<String> getAllPossibleIds() {
 
-        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id")).toIterable();
+        Iterable<Employee> employeeIterable = employeeRepository.findAll(Sort.by("id"));
         List<String> employeeIdList = new LinkedList<>();
 
         for(Employee employee : employeeIterable) {
@@ -224,7 +224,7 @@ public class TransactionGenerator {
             resourceOperation.setIsCommitOperation(false);
             resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
 
-            resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).block());
+            resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).get());
             resourceOperation.setAssociatedTransaction(transaction);
 
             transaction.addResourceOperation(resourceOperation);
@@ -264,7 +264,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(RANDOM_BOUND));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).block());
+                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).get());
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);
@@ -315,7 +315,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(RANDOM_BOUND));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).block());
+                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).get());
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);
@@ -354,7 +354,7 @@ public class TransactionGenerator {
                 resourceOperation.setExecutionTime(random.nextInt(RANDOM_BOUND));
                 resourceOperation.setIsCommitOperation(false);
                 resourceOperation.setOperation(Operation.getOperationByOperationNum(operation));
-                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).block());
+                resourceOperation.setResource(employeeRepository.findById(employeeIdList.get(resourceIndex)).get());
                 resourceOperation.setAssociatedTransaction(transaction);
 
                 transaction.addResourceOperation(resourceOperation);
