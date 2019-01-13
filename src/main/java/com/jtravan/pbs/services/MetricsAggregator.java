@@ -440,6 +440,14 @@ public class MetricsAggregator {
         @Override
         public void run(){
             if (useAmazonS3 && !isTesting) {
+
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+
                 try {
                     amazonFileUploader.uploadFile(output1);
                 } catch (InterruptedException e) {
