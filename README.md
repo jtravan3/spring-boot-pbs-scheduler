@@ -28,6 +28,11 @@ s3_access_key_id={Client ID}
 s3_access_secret={Client Secret}
 ```
 
+If you are using the S3 solution, the output will only be saved when the simulation is terminated. A shutdown hook is used
+to send out the recorded data to S3 before the temporary files are deleted. On S3 you will see a folder with the current timestamp 
+as the folder name. Within the folder there will be 7 files called `output{testCaseNumber}` representing the data obtained from
+each test case.
+
 5.) If all tests succeed and the project can be built successfully, navigate to the Spring Boot
 Application with the name `PredictionBasedPrototypeApplication.java`. If you're using IntelliJ,
 click on the file and click `Run`.
@@ -54,7 +59,7 @@ docker run -p 5000:5000 spring-boot-pbs-scheduler
 With the `Dockerfile` and the Amazon S3 configuration, you can deploy the app to the cloud to use more computing power in order
 to execute longer tests.
 
-## Docker Hub
+## Docker Hub Execution
 
 I have a personal Docker Hub repository (https://cloud.docker.com/repository/docker/jtravan3/spring-boot-pbs-scheduler) with the latest image. 
 You can pull this image down and run it directly. For access, email me directly at ravanj1@citadel.edu.
@@ -74,7 +79,7 @@ docker run -p 5000:5000 jtravan3/spring-boot-pbs-scheduler
 You can perform these commands in a pre-built digital ocean container so that your resources 
 are not consumed locally.
 
-## Execution
+## Local Execution
 
 1.) With the application running navigate to a web browser and access the 
 URL `http://localhost:5000/rest/pbs/start/difftrans/so/{testCaseNumber}` where `testCaseNumber`

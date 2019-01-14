@@ -1,21 +1,17 @@
 package com.techprimers.reactive.reactivemongoexample1;
 
-import com.jtravan.pbs.PbsTransactionEndpoints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
 import com.techprimers.reactive.reactivemongoexample1.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
