@@ -66,6 +66,7 @@ public class PbsTransactionEndpoints {
         this.predictionBasedSchedulerActionService = predictionBasedSchedulerActionService;
         this.resourceCategoryDataStructure_READ = resourceCategoryDataStructure_READ;
         this.resourceCategoryDataStructure_WRITE = resourceCategoryDataStructure_WRITE;
+        Runtime.getRuntime().addShutdownHook(new ThreadServiceShutdownHook());
     }
 
     @Transactional
@@ -160,6 +161,10 @@ public class PbsTransactionEndpoints {
         return "I ended the Loop";
     }
 
+    private ExecutorService pbsExecutorService;
+    private ExecutorService tsExecutorService;
+    private ExecutorService nlExecutorService;
+
     @Transactional
     @GetMapping(value = "/start/difftrans/so/all", produces = MediaType.TEXT_PLAIN_VALUE)
     public String startDifferentSystemOutLoop() {
@@ -196,7 +201,7 @@ public class PbsTransactionEndpoints {
                 transactionEventSupplier.clearSupplier();
                 metricsAggregator.setPbsStartTime(new Date());
                 i = 0;
-                ExecutorService pbsExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                pbsExecutorService = Executors.newFixedThreadPool(transactionList.size());
                 for(Transaction transaction : transactionList) {
                     PredictionBasedScheduler pbs = createPredictionBasedScheduler(transaction.createCopy(), i);
                     i++;
@@ -217,7 +222,7 @@ public class PbsTransactionEndpoints {
                 transactionEventSupplier.clearSupplier();
                 metricsAggregator.setTsStartTime(new Date());
                 i = 0;
-                ExecutorService tsExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                tsExecutorService = Executors.newFixedThreadPool(transactionList.size());
                 for(Transaction transaction : transactionList) {
                     TraditionalScheduler ts = createTraditionalScheduler(transaction.createCopy(), i);
                     i++;
@@ -238,7 +243,7 @@ public class PbsTransactionEndpoints {
                 transactionEventSupplier.clearSupplier();
                 metricsAggregator.setNlStartTime(new Date());
                 i = 0;
-                ExecutorService nlExecutorService = Executors.newFixedThreadPool(transactionList.size());
+                nlExecutorService = Executors.newFixedThreadPool(transactionList.size());
                 for(Transaction transaction : transactionList) {
                     NoLockingScheduler nl = createNoLockingScheduler(transaction.createCopy(), i);
                     i++;
@@ -464,5 +469,22 @@ public class PbsTransactionEndpoints {
                 .append(System.lineSeparator());
 
         return stringBuilder.toString();
+    }
+
+    public class ThreadServiceShutdownHook extends Thread {
+        @Override
+        public void run() {
+            if(pbsExecutorService != null) {
+                pbsExecutorService.shutdownNow();
+            }
+
+            if (tsExecutorService != null) {
+                tsExecutorService.shutdownNow();
+            }
+
+            if(nlExecutorService != null) {
+                nlExecutorService.shutdownNow();
+            }
+        }
     }
 }
