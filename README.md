@@ -62,7 +62,7 @@ You can pull this image down and run it directly. For access, email me directly 
 Once you have access, simply run the command:
 
 ```bash
-docker pull jtravan/spring-boot-pbs-scheduler
+docker pull jtravan3/spring-boot-pbs-scheduler
 ```
 
 This will pull the latest image to your local machine. Once you have the latest image execute:
