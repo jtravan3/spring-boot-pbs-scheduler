@@ -143,12 +143,16 @@ public class PredictionBasedPrototypeApplication implements CommandLineRunner {
     }
 
     private static void executeAutomatically() {
-        final String uri = "http://localhost:5000/rest/pbs/start/difftrans/so/all";
+        try {
+            final String uri = "http://localhost:5000/rest/pbs/start/difftrans/so/all";
 
-        RestTemplate restTemplate = new RestTemplate();
-        String result = restTemplate.getForObject(uri, String.class);
+            RestTemplate restTemplate = new RestTemplate();
+            String result = restTemplate.getForObject(uri, String.class);
 
-        System.out.println(result);
+            System.out.println(result);
+        } catch (Exception e) {
+            // Do nothing
+        }
     }
 
     @Override
