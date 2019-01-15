@@ -45,15 +45,15 @@ commands to build a docker image.
 First, to build an image run the command from the project root directory:
 
 ```bash
-docker build -t spring-boot-pbs-scheduler .
+docker-compose build
 ```
 
-This will build an image from the `Dockerfile`. 
+This will build an image from the `Dockerfile` and the `docker-compose.yml`. 
 
 2.) To execute the Docker image run the command.
 
 ```bash
-docker run -p 5000:5000 spring-boot-pbs-scheduler
+docker-compose up
 ```
 
 With the `Dockerfile` and the Amazon S3 configuration, you can deploy the app to the cloud to use more computing power in order
