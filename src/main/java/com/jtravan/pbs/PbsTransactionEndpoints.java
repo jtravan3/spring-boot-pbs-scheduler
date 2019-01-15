@@ -15,8 +15,9 @@ import com.jtravan.pbs.services.PredictionBasedSchedulerActionService;
 import com.jtravan.pbs.services.ResourceNotificationManager;
 import com.jtravan.pbs.services.TestCaseFactory;
 import com.jtravan.pbs.suppliers.TransactionEventSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,7 +34,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -41,6 +41,8 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("/rest/pbs")
 public class PbsTransactionEndpoints {
+
+    private Logger LOG = LoggerFactory.getLogger("PbsTransactionEndpoints");
 
     private final TransactionEventSupplier transactionEventSupplier;
     private final TransactionGenerator transactionGenerator;
@@ -369,7 +371,7 @@ public class PbsTransactionEndpoints {
             if(event == null) {
                 doContinue = false;
             } else {
-                System.out.println(event.getValue());
+                LOG.info(event.getValue());
             }
         }
 

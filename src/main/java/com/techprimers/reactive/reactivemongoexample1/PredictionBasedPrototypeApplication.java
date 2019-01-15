@@ -124,7 +124,7 @@ public class PredictionBasedPrototypeApplication implements CommandLineRunner {
             new Employee("1099", "Mary", 20000L),
             new Employee("1100", "Cathy", 53000L)).collect(Collectors.toList());
 
-    private Logger LOG = LoggerFactory.getLogger("PredictionBasedPrototypeApplication");
+    private static final Logger LOG = LoggerFactory.getLogger("PredictionBasedPrototypeApplication");
 
     private final EmployeeRepository employeeRepository;
 
@@ -145,7 +145,7 @@ public class PredictionBasedPrototypeApplication implements CommandLineRunner {
             RestTemplate restTemplate = new RestTemplate();
             String result = restTemplate.getForObject(uri, String.class);
 
-            System.out.println(result);
+            LOG.info(result);
         } catch (Exception e) {
             // Do nothing
         }

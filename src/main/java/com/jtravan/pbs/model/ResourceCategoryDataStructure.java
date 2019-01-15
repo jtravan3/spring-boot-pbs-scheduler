@@ -1,11 +1,16 @@
 package com.jtravan.pbs.model;
 
 import com.techprimers.reactive.reactivemongoexample1.model.Employee;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 @SuppressWarnings("ALL")
 public class ResourceCategoryDataStructure {
+
+    private Logger LOG = LoggerFactory.getLogger("ResourceCategoryDataStructure");
+
 
     private final Map<Employee, Heap<ResourceOperation>> resourceMinHeapMap;
 
@@ -127,8 +132,7 @@ public class ResourceCategoryDataStructure {
             int leftChildIndex = 2 * i;
             String leftChild = getChildString(leftChildIndex, heap);
 
-            System.out.print(" PARENT : " + parent + " LEFT CHILD : " + leftChild + " RIGHT CHILD :" + rightChild);
-            System.out.println();
+            LOG.info(" PARENT : " + parent + " LEFT CHILD : " + leftChild + " RIGHT CHILD :" + rightChild);
         }
     }
 

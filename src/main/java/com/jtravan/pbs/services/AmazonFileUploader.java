@@ -9,6 +9,8 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +29,9 @@ public class AmazonFileUploader {
     @Value("${s3.access.secret.key}")
     private String s3AccessSecretKey;
 
+    private Logger LOG = LoggerFactory.getLogger("AmazonFileUploader");
+
+
     public void uploadFiles(File... files) {
 
         AWSCredentials credentials = new BasicAWSCredentials(s3AccessClientId, s3AccessSecretKey);
@@ -42,11 +47,11 @@ public class AmazonFileUploader {
             try {
                 client.putObject(s3BucketName, time.toString() + "/output" + i, file);
             } catch (AmazonServiceException e) {
-                System.err.println("Error occurred whiled uploading files to S3: " + e.toString());
+                LOG.error("Error occurred whiled uploading files to S3: " + e.toString());
             }
         }
 
-        System.out.println("Shutting down S3 Client...");
+        LOG.info("Shutting down S3 Client...");
         client.shutdown();
     }
 

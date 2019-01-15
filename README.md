@@ -67,13 +67,13 @@ You can pull this image down and run it directly. For access, email me directly 
 Once you have access, simply run the command:
 
 ```bash
-docker pull jtravan3/spring-boot-pbs-scheduler
+docker-compose pull jtravan3/spring-boot-pbs-scheduler
 ```
 
 This will pull the latest image to your local machine. Once you have the latest image execute:
 
 ```bash
-docker run -p 5000:5000 jtravan3/spring-boot-pbs-scheduler
+docker-compose up
 ```
 
 You can perform these commands in a pre-built digital ocean container so that your resources 

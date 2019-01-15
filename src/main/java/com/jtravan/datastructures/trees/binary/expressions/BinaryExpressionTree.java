@@ -1,8 +1,13 @@
 package com.jtravan.datastructures.trees.binary.expressions;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class BinaryExpressionTree
 {
+    private Logger LOG = LoggerFactory.getLogger("BinaryExpressionTree");
+
     public int Count;
     public BinaryNode<Character> rootNode;
     private String expression;
@@ -83,7 +88,7 @@ public class BinaryExpressionTree
                     value = left / right;
                     break;
                 default:
-                    System.out.println("Invalid OP" + node.item);
+                    LOG.info("Invalid OP" + node.item);
                     value = 0;
                     break;
             }
@@ -97,11 +102,10 @@ public class BinaryExpressionTree
         if (rootNode != null)
         {
             DisplayInOrder(rootNode);
-            System.out.println();
         }
         else
         {
-            System.out.println("Tree is empty.");
+            LOG.info("Tree is empty.");
         }
     }
 
@@ -109,14 +113,14 @@ public class BinaryExpressionTree
     {
         if (node.left != null)
         {
-            System.out.print('(');
+            LOG.info("(");
             DisplayInOrder(node.left);
         }
-        System.out.print(node.item);
+        LOG.info(node.item.toString());
         if (node.right != null)
         {
             DisplayInOrder(node.right);
-            System.out.print(')');
+            LOG.info(")");
         }
     }
 

@@ -1,6 +1,8 @@
 package com.jtravan.pbs.suppliers;
 
 import com.jtravan.pbs.model.TransactionEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
@@ -18,6 +20,9 @@ public class TransactionEventSupplierImpl implements TransactionEventSupplier {
 
     private final BlockingQueue<TransactionEvent> transactionEventQueue;
 
+    private Logger LOG = LoggerFactory.getLogger("TransactionEventSupplierImpl");
+
+
     public TransactionEventSupplierImpl() {
         transactionEventQueue = new LinkedBlockingDeque<>();
     }
@@ -28,7 +33,7 @@ public class TransactionEventSupplierImpl implements TransactionEventSupplier {
             try {
                 return transactionEventQueue.poll(10, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                System.err.println("Timeout waiting for queue to be populated");
+                LOG.error("Timeout waiting for queue to be populated");
                 return null;
             }
         }

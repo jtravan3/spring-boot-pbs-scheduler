@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+  spring-boot-pbs-scheduler:
+    image: jtravan3/spring-boot-pbs-scheduler
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5000:5000
+    volumes:
+      - ./src:/usr/src/app/src
+      - ./target:/usr/src/app/target
+      - ./pom.xml:/usr/src/app/pom.xml
+    working_dir: /usr/src/app
+    command: ["java","-Xmx1024m","-jar","/spring-boot-pbs-scheduler.jar"]
+    env_file:
+      - ./src/main/resources/application.properties
