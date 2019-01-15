@@ -282,6 +282,9 @@ public class MetricsAggregator {
     private long getNlExecutionTime() {
         long milliSeconds = ChronoUnit.MILLIS.between(nlStartTime.toInstant(), nlEndTime.toInstant());
         nlExecutionTime = milliSeconds - 10000; // offset 10 second wait
+        if (isNlConsistencyLost()) {
+           nlExecutionTime+=nlExecutionTime; //to account for compensation transaction
+        }
         return nlExecutionTime;
     }
 
