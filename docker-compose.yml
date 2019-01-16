@@ -14,5 +14,3 @@ services:
       - ./pom.xml:/usr/src/app/pom.xml
     working_dir: /usr/src/app
     command: ["java","-Xmx1024m","-jar","/spring-boot-pbs-scheduler.jar"]
-    env_file:
-      - ./src/main/resources/application.properties

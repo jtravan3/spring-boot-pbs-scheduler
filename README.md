@@ -64,7 +64,40 @@ to execute longer tests.
 I have a personal Docker Hub repository (https://cloud.docker.com/repository/docker/jtravan3/spring-boot-pbs-scheduler) with the latest image. 
 You can pull this image down and run it directly. For access, email me directly at ravanj1@citadel.edu.
 
-Once you have access, simply run the command:
+Install `docker-compose` to your system
+
+```bash
+sudo curl -L "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+```
+
+Set the correct permissions for the executable
+
+```bash
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+Once you have access to the Docker Hub repository, copy the following `docker-compose.yml` to the location you wish to run.
+
+```yaml
+version: "3"
+
+services:
+  spring-boot-pbs-scheduler:
+    image: jtravan3/spring-boot-pbs-scheduler
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5000:5000
+    volumes:
+      - ./src:/usr/src/app/src
+      - ./target:/usr/src/app/target
+      - ./pom.xml:/usr/src/app/pom.xml
+    working_dir: /usr/src/app
+    command: ["java","-Xmx1024m","-jar","/spring-boot-pbs-scheduler.jar"]
+```
+
+After that run the following command from the same directory.
 
 ```bash
 docker-compose pull jtravan3/spring-boot-pbs-scheduler
