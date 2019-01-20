@@ -53,8 +53,8 @@ public class PbsTransactionEndpoints {
     private final ResourceCategoryDataStructure_WRITE resourceCategoryDataStructure_WRITE;
     private final MetricsAggregator metricsAggregator;
 
-    private final int NUM_OF_OPERATIONS = 500;
-    private final int NUM_OF_SCHEDULES = 5;
+    private final int NUM_OF_OPERATIONS = 13;
+    private final int NUM_OF_SCHEDULES = 47;
 
     public PbsTransactionEndpoints(TransactionEventSupplier transactionEventSupplier, TransactionGenerator transactionGenerator,
                                    ResourceNotificationManager resourceNotificationManager, PredictionBasedSchedulerActionService predictionBasedSchedulerActionService,
