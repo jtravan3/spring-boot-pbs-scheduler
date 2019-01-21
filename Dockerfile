@@ -18,4 +18,4 @@ EXPOSE 5000
 COPY --from=base /usr/src/app/target/spring-boot-pbs-scheduler-0.0.1-SNAPSHOT.jar spring-boot-pbs-scheduler.jar
 
 # Run the .jar file
-ENTRYPOINT ["java","-Xmx1024m","-jar","/spring-boot-pbs-scheduler.jar"]
+ENTRYPOINT ["java","-Xmx4096m","-jar","/spring-boot-pbs-scheduler.jar"]
